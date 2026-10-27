@@ -1,0 +1,13 @@
+# Local AI tooling (not part of the project)
+.agents/
+.atl/
+.claude/
+skills-lock.json
+
+# Arduino / editor artifacts
+build/
+*.bin
+*.elf
+.vscode/
+.DS_Store
+Thumbs.db

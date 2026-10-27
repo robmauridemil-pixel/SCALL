@@ -1,0 +1,2415 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SCALL · Sistema de captación de agua de lluvia</title>
+<meta name="description" content="Panel SCALL de monitoreo y control del sistema de captación de agua de lluvia: ESP32-S3, HC-SR04, YF-S201, llenado manual y MQTT.">
+<meta name="theme-color" content="#04141F">
+<meta name="color-scheme" content="dark">
+<link rel="icon" type="image/png" href="assets/scall-mark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* ============================ Base ============================ */
+:root{
+  --bg:#04141F;
+  --bg-soft:#061C2A;
+  --surface:rgba(182,236,242,.05);
+  --surface-2:rgba(182,236,242,.09);
+  --line:rgba(182,236,242,.12);
+  --line-2:rgba(182,236,242,.22);
+  --txt:#EAF7FA;
+  --dim:#9FC3CE;
+  --faint:#648A97;
+  --accent:#04C4D9;
+  --accent-2:#04D9D9;
+  --ice:#B6ECF2;
+  --ok:#93BF50;
+  --warn:#D9A07E;
+  --bad:#E2685E;
+  --earth:#8C5B49;
+  --earth-2:#C08A72;
+  --idle:#6C8E9A;
+  --radius:16px;
+  --font:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  min-height:100vh;
+  background:
+    radial-gradient(1000px 520px at 12% -12%, rgba(4,196,217,.16), transparent 62%),
+    radial-gradient(820px 460px at 92% -4%, rgba(4,217,217,.10), transparent 60%),
+    var(--bg);
+  color:var(--txt);
+  font-family:var(--font);
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:rgba(4,196,217,.3)}
+h1,h2,p,dl,dd,dt,ol,ul{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block}
+.bg-grid{
+  position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(rgba(182,236,242,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(182,236,242,.035) 1px, transparent 1px);
+  background-size:64px 64px;
+  -webkit-mask-image:radial-gradient(1200px 700px at 50% 0%, #000 20%, transparent 85%);
+  mask-image:radial-gradient(1200px 700px at 50% 0%, #000 20%, transparent 85%);
+}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+
+/* ============================ Topbar ============================ */
+.topbar{
+  position:sticky;top:0;z-index:30;
+  background:rgba(4,20,31,.82);
+  border-bottom:1px solid var(--line);
+  -webkit-backdrop-filter:blur(16px) saturate(140%);
+  backdrop-filter:blur(16px) saturate(140%);
+}
+.topbar__inner{
+  max-width:1460px;margin:0 auto;padding:11px 22px;
+  display:flex;align-items:center;justify-content:space-between;gap:18px;
+}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.brand__mark{
+  width:42px;height:42px;flex:none;border-radius:12px;
+  display:grid;place-items:center;padding:3px;overflow:hidden;
+  background:#fff;border:1px solid rgba(182,236,242,.42);
+  box-shadow:0 0 26px -10px rgba(4,196,217,.85);
+}
+.brand__mark img{width:100%;height:100%;object-fit:contain;display:block;border-radius:8px}
+.brand__name{font-size:16px;font-weight:700;letter-spacing:.02em;line-height:1.2}
+.brand__sub{font-size:11px;color:var(--faint);letter-spacing:.02em}
+.topbar__right{display:flex;align-items:center;gap:14px}
+.clock{display:flex;flex-direction:column;align-items:flex-end;line-height:1.15}
+.clock__time{font-family:var(--mono);font-size:14px;font-variant-numeric:tabular-nums;color:var(--dim)}
+.clock__date{font-size:10.5px;color:var(--faint);text-transform:capitalize}
+.status{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:6px 12px;border-radius:999px;
+  border:1px solid var(--line-2);background:rgba(255,255,255,.03);
+  font-size:12px;font-weight:600;letter-spacing:.01em;white-space:nowrap;
+}
+.status .dot{width:8px;height:8px;border-radius:50%;background:var(--idle);flex:none;box-shadow:0 0 0 4px rgba(108,142,154,.12)}
+.status[data-tone="ok"]{color:#CFE8B4;border-color:rgba(147,191,80,.32);background:rgba(147,191,80,.07)}
+.status[data-tone="ok"] .dot{background:var(--ok);box-shadow:0 0 0 4px rgba(147,191,80,.14);animation:pulse 2.6s ease-in-out infinite}
+.status[data-tone="warn"]{color:#F1D5C2;border-color:rgba(217,160,126,.32);background:rgba(217,160,126,.07)}
+.status[data-tone="warn"] .dot{background:var(--warn);box-shadow:0 0 0 4px rgba(217,160,126,.14)}
+.status[data-tone="bad"]{color:#FFD5D0;border-color:rgba(226,104,94,.32);background:rgba(226,104,94,.08)}
+.status[data-tone="bad"] .dot{background:var(--bad);box-shadow:0 0 0 4px rgba(226,104,94,.14)}
+.status[data-tone="demo"]{color:#E6CDBF;border-color:rgba(140,91,73,.34);background:rgba(140,91,73,.09)}
+.status[data-tone="demo"] .dot{background:var(--earth-2);box-shadow:0 0 0 4px rgba(140,91,73,.14)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.icon-btn{
+  width:38px;height:38px;flex:none;border-radius:10px;cursor:pointer;
+  display:grid;place-items:center;color:var(--dim);
+  background:rgba(255,255,255,.03);border:1px solid var(--line);
+  transition:color .18s,border-color .18s,background .18s;
+}
+.icon-btn:hover{color:var(--txt);border-color:var(--line-2);background:rgba(255,255,255,.055)}
+.icon-btn svg{width:18px;height:18px}
+
+/* ============================ Page ============================ */
+.page{position:relative;z-index:1;max-width:1460px;margin:0 auto;padding:20px 22px 36px}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px;align-items:stretch}
+
+/* ============================ Cards ============================ */
+.card{
+  position:relative;display:flex;flex-direction:column;min-width:0;
+  padding:16px 18px 16px;border-radius:var(--radius);
+  background:linear-gradient(180deg, rgba(182,236,242,.065), rgba(182,236,242,.012));
+  border:1px solid var(--line);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.045), 0 24px 48px -34px rgba(0,0,0,.95);
+}
+.card__head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
+.card__title{
+  font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--faint);line-height:1.4;
+}
+.c-tank{grid-column:span 4;grid-row:span 2}
+.c-pump{grid-column:span 5}
+.c-flow{grid-column:span 3}
+.c-level{grid-column:span 5}
+.c-alarm{grid-column:span 3}
+.c-chart{grid-column:span 8}
+.c-controls{grid-column:span 4}
+.c-events{grid-column:span 7}
+.c-device{grid-column:span 5}
+
+/* ============================ Chips ============================ */
+.chip{
+  display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;
+  background:rgba(255,255,255,.04);border:1px solid var(--line);
+  font-size:10.5px;font-weight:600;letter-spacing:.03em;color:var(--dim);white-space:nowrap;
+}
+.chip[data-tone="ok"]{color:var(--ok);border-color:rgba(147,191,80,.3);background:rgba(147,191,80,.08)}
+.chip[data-tone="warn"]{color:var(--warn);border-color:rgba(217,160,126,.3);background:rgba(217,160,126,.08)}
+.chip[data-tone="bad"]{color:var(--bad);border-color:rgba(226,104,94,.3);background:rgba(226,104,94,.08)}
+.chip[data-tone="idle"]{color:var(--idle)}
+.chip[data-tone="active"]{color:#CDF8FD;border-color:rgba(4,217,217,.4);background:rgba(4,217,217,.1)}
+.chip[data-tone="demo"]{color:#E6CDBF;border-color:rgba(140,91,73,.3);background:rgba(140,91,73,.08)}
+
+/* ============================ Metrics ============================ */
+.metric-row{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.metric{
+  font-family:var(--mono);font-size:38px;font-weight:500;line-height:1;
+  letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:var(--txt);
+  transition:color .2s,opacity .3s;
+}
+.metric--sm{font-size:30px}
+.unit{font-family:var(--font);font-size:12.5px;font-weight:500;color:var(--faint);letter-spacing:.01em}
+.k{font-size:10.5px;color:var(--faint);letter-spacing:.05em;text-transform:uppercase;font-weight:500}
+.divider{height:1px;background:var(--line);margin:14px 0}
+.hint{font-size:11.5px;color:var(--faint);line-height:1.55}
+
+/* ============================ Tank ============================ */
+.tank-stage{flex:1;display:flex;align-items:center;justify-content:center;min-height:280px}
+.tank-pair{display:flex;align-items:stretch;gap:6px;height:100%;max-height:430px;min-height:280px}
+.tank-frame{position:relative;height:100%;aspect-ratio:240/360;flex:none;min-width:0}
+.tank__svg{width:100%;height:100%;overflow:visible}
+.tank__level{display:flex;align-items:baseline;gap:6px}
+.tank__level .metric{font-size:42px}
+.water{transition:transform .9s cubic-bezier(.22,1,.36,1);will-change:transform}
+.water__wave{animation:wave 7s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:center}
+@keyframes wave{from{transform:translateX(-12px)}to{transform:translateX(12px)}}
+.tank-frame.is-invalid .water{opacity:.18}
+.tank-frame.is-invalid #markOn,.tank-frame.is-invalid #markOff{opacity:.2}
+
+/* Barra de nivel junto al tanque */
+.level-control{position:relative;width:64px;flex:none;align-self:stretch;user-select:none}
+.level-control__title,.level-control__hint{
+  position:absolute;left:0;right:0;text-align:center;
+  font-size:8px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);
+}
+.level-control__title{top:0}
+.level-control__hint{bottom:0}
+.level-rail{
+  position:absolute;top:12.22%;bottom:9.44%;left:50%;width:8px;transform:translateX(-50%);
+  border-radius:6px;background:linear-gradient(180deg,rgba(182,236,242,.09),rgba(182,236,242,.025));
+  border:1px solid var(--line);cursor:ns-resize;touch-action:none;
+}
+.level-rail:focus-visible{outline:2px solid var(--accent);outline-offset:6px;border-radius:6px}
+.level-rail__fill{
+  position:absolute;left:0;right:0;bottom:0;height:0;border-radius:6px;
+  background:linear-gradient(0deg,var(--accent),var(--ice));
+  box-shadow:0 0 14px -4px rgba(4,196,217,.75);transition:height .12s linear;
+}
+.level-rail__handle{
+  position:absolute;left:50%;bottom:0;width:18px;height:18px;border-radius:50%;
+  transform:translate(-50%,50%);background:var(--bg-soft);
+  border:2px solid var(--ice);box-shadow:0 0 0 3px rgba(4,196,217,.12),0 0 18px -4px rgba(4,196,217,.8);
+  cursor:grab;display:grid;place-items:center;transition:bottom .12s linear,transform .15s;
+}
+.level-rail__handle::after{content:"";width:4px;height:4px;border-radius:50%;background:var(--ice)}
+.level-rail.is-dragging .level-rail__handle{cursor:grabbing;transform:translate(-50%,50%) scale(1.15);transition:none}
+.level-rail.is-dragging .level-rail__fill{transition:none}
+.level-rail.is-readonly{cursor:default}
+.level-rail.is-readonly .level-rail__handle{cursor:default;opacity:.7;border-color:var(--line-2);box-shadow:none}
+.level-rail__tick{
+  position:absolute;left:-3px;right:-3px;height:1px;background:rgba(217,160,126,.7);
+  pointer-events:none;
+}
+.level-rail__tick--on{background:var(--accent);box-shadow:0 0 6px rgba(4,196,217,.8)}
+.level-rail__tick b{
+  position:absolute;left:calc(100% + 7px);top:50%;transform:translateY(-50%);
+  font-family:var(--mono);font-size:7.5px;font-weight:500;letter-spacing:.02em;color:var(--faint);
+  background:var(--bg-soft);padding:0 2px;border-radius:3px;white-space:nowrap;
+}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:11px;color:var(--dim)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend b{font-family:var(--mono);font-weight:500;color:var(--txt);font-variant-numeric:tabular-nums}
+.lg{width:14px;height:2px;border-radius:2px;flex:none}
+.lg--on{background:var(--accent)}
+.lg--off{background:rgba(217,160,126,.7)}
+.lg--dead{background:rgba(217,160,126,.22);height:6px;border-radius:2px;width:10px}
+
+/* ============================ Pump ============================ */
+.pump{display:flex;align-items:center;gap:18px;flex:1;min-height:96px}
+.pump__ring{
+  position:relative;width:86px;height:86px;flex:none;border-radius:50%;
+  display:grid;place-items:center;color:var(--faint);
+  background:radial-gradient(circle at 32% 26%, rgba(255,255,255,.09), rgba(255,255,255,.015));
+  border:1px solid var(--line-2);
+  transition:color .25s,border-color .25s,box-shadow .25s;
+}
+.pump__ring svg{width:34px;height:34px}
+.pump__ring.is-on{
+  color:var(--accent);border-color:rgba(4,196,217,.5);
+  box-shadow:0 0 0 7px rgba(4,196,217,.06), 0 0 34px -6px rgba(4,196,217,.55);
+}
+.pump__ring.is-on::after{
+  content:"";position:absolute;inset:-7px;border-radius:50%;
+  border:1px dashed rgba(4,196,217,.42);animation:spin 9s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pump__main{min-width:0;flex:1}
+.pump__state{font-size:30px;font-weight:650;letter-spacing:-.02em;line-height:1.1;color:var(--dim);transition:color .25s}
+.pump__state.is-on{color:var(--txt)}
+.pump__reason{font-size:12px;color:var(--faint);margin-top:4px;min-height:18px;overflow:hidden;text-overflow:ellipsis}
+.pump__meta{display:flex;flex-wrap:wrap;gap:4px 22px;margin-top:14px}
+.pump__meta>div{display:flex;flex-direction:column;gap:1px}
+.pump__meta span{font-size:9.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint)}
+.pump__meta b{font-family:var(--mono);font-size:12.5px;font-weight:500;color:var(--txt);font-variant-numeric:tabular-nums}
+.pump__meta b[data-tone="ok"]{color:var(--ok)}
+.pump__meta b[data-tone="warn"]{color:var(--warn)}
+.pump__meta b[data-tone="bad"]{color:var(--bad)}
+.pump__meta b[data-tone="idle"]{color:var(--faint)}
+
+/* ============================ Flow ============================ */
+.flow__total{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.kv-inline{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.kv-inline .v{font-family:var(--mono);font-size:18px;font-weight:500;font-variant-numeric:tabular-nums}
+.kv-inline .unit{font-size:11.5px}
+#litersDelta{margin-top:auto;padding-top:10px}
+
+/* ============================ Level ============================ */
+.levelbar{
+  position:relative;height:8px;border-radius:6px;margin:18px 0 6px;
+  background:linear-gradient(90deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+  border:1px solid var(--line);
+}
+.levelbar__fill{
+  position:absolute;left:0;top:0;bottom:0;border-radius:6px;
+  background:linear-gradient(90deg, rgba(4,196,217,.45), var(--accent));
+  transition:width .9s cubic-bezier(.22,1,.36,1);min-width:0;
+  box-shadow:0 0 18px -4px rgba(4,196,217,.6);
+}
+.tick{position:absolute;top:-4px;width:2px;height:14px;border-radius:2px;background:rgba(217,160,126,.55);transform:translateX(-1px)}
+.tick--on{background:var(--accent);box-shadow:0 0 10px rgba(4,196,217,.8)}
+.level-legend{display:flex;justify-content:space-between;font-size:10px;color:var(--faint);font-family:var(--mono)}
+.mini-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}
+.mini-stats>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.mini-stats span{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint)}
+.mini-stats b{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--txt);font-variant-numeric:tabular-nums;white-space:nowrap}
+.linkbtn{
+  background:none;border:0;padding:0;cursor:pointer;
+  font-size:11px;font-weight:600;color:var(--accent);letter-spacing:.01em;
+}
+.linkbtn:hover{text-decoration:underline}
+
+/* ============================ Alarm ============================ */
+.alarm{display:flex;gap:11px;align-items:flex-start;flex:1;padding-top:2px}
+.alarm .ico{width:20px;height:20px;flex:none;margin-top:1px;color:var(--ok);transition:color .2s}
+.alarm b{display:block;font-size:14.5px;font-weight:600;line-height:1.3}
+.alarm p{font-size:11.5px;color:var(--faint);margin-top:3px;line-height:1.5}
+.alarm[data-tone="ok"] .ico{color:var(--ok)}
+.alarm[data-tone="warn"] .ico{color:var(--warn)}
+.alarm[data-tone="bad"] .ico{color:var(--bad)}
+.alarm[data-tone="bad"] b{color:#FFD5D0}
+
+/* ============================ Chart ============================ */
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:9px;background:rgba(255,255,255,.035);border:1px solid var(--line)}
+.seg button{
+  appearance:none;border:0;background:none;cursor:pointer;
+  padding:5px 10px;border-radius:6px;font-size:11.5px;font-weight:600;color:var(--faint);
+  transition:color .15s,background .15s;white-space:nowrap;
+}
+.seg button:hover{color:var(--dim)}
+.seg button.is-active{background:rgba(255,255,255,.075);color:var(--txt);box-shadow:0 1px 0 rgba(255,255,255,.06) inset}
+.chart__stats{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:10.5px;color:var(--faint);margin-bottom:6px}
+.chart__stats b{font-family:var(--mono);font-weight:500;color:var(--dim);font-variant-numeric:tabular-nums}
+.chart__window{margin-left:auto;color:var(--faint)}
+.chart__wrap{position:relative;flex:1;min-height:210px}
+#chart{position:absolute;inset:0;width:100%;height:100%}
+.chart__empty{
+  position:absolute;inset:0;display:grid;place-items:center;
+  font-size:12px;color:var(--faint);letter-spacing:.02em;
+  background:linear-gradient(180deg, transparent, rgba(4,20,31,.35));
+  pointer-events:none;
+}
+[hidden]{display:none!important}
+
+/* ============================ Controls ============================ */
+.segmented{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.segmented button{
+  appearance:none;cursor:pointer;padding:11px 8px;border-radius:10px;
+  border:1px solid var(--line-2);background:rgba(255,255,255,.03);
+  font-size:12.5px;font-weight:600;color:var(--dim);
+  transition:background .16s,color .16s,border-color .16s,transform .16s;
+}
+.segmented button:hover:not(:disabled){background:rgba(255,255,255,.06);color:var(--txt)}
+.segmented button:active:not(:disabled){transform:translateY(1px)}
+.segmented button.is-active{
+  color:#CDF8FD;border-color:rgba(4,196,217,.5);background:rgba(4,196,217,.12);
+  box-shadow:0 0 22px -10px rgba(4,196,217,.7);
+}
+.segmented button:disabled{opacity:.4;cursor:not-allowed}
+#modeHint{margin-top:10px;min-height:34px}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.btn{
+  appearance:none;cursor:pointer;padding:9px 12px;border-radius:9px;
+  border:1px solid var(--line-2);background:rgba(255,255,255,.035);
+  font-size:11.5px;font-weight:600;color:var(--dim);text-align:center;
+  transition:background .16s,color .16s,border-color .16s;
+}
+.btn:hover:not(:disabled){background:rgba(255,255,255,.07);color:var(--txt)}
+.btn:disabled{opacity:.38;cursor:not-allowed}
+.btn--primary{background:rgba(4,196,217,.16);border-color:rgba(4,196,217,.45);color:#CDF8FD}
+.btn--primary:hover:not(:disabled){background:rgba(4,196,217,.24);color:#EFFDFF}
+.btn--danger{background:rgba(226,104,94,.14);border-color:rgba(226,104,94,.42);color:#FFD5D0}
+.btn--danger:hover:not(:disabled){background:rgba(226,104,94,.22)}
+.btn--ghost{background:none;border-color:transparent;color:var(--faint);padding:4px 8px}
+.btn--ghost:hover:not(:disabled){background:rgba(255,255,255,.05);color:var(--dim)}
+.btn--xs{font-size:10.5px;padding:3px 8px}
+
+/* ============================ Llenado manual ============================ */
+.fill{margin-top:2px}
+.fill__head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.fill .btn{width:100%}
+.btn--fill{background:rgba(4,217,217,.14);border-color:rgba(4,217,217,.4);color:#CDF8FD}
+.btn--fill:hover:not(:disabled){background:rgba(4,217,217,.22);color:#EFFDFF}
+.btn--fill.is-stop{background:rgba(226,104,94,.14);border-color:rgba(226,104,94,.42);color:#FFD5D0}
+.btn--fill.is-stop:hover:not(:disabled){background:rgba(226,104,94,.22)}
+
+/* ============================ Events ============================ */
+.events{
+  list-style:none;padding:0;margin:0;overflow:auto;max-height:242px;
+  display:flex;flex-direction:column;gap:1px;
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.14) transparent;
+}
+.events::-webkit-scrollbar{width:6px}
+.events::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:3px}
+.events__empty{font-size:12px;color:var(--faint);padding:16px 0}
+.event{display:flex;gap:10px;align-items:baseline;padding:6px 2px;border-bottom:1px solid rgba(255,255,255,.035);font-size:12px}
+.event:last-child{border-bottom:0}
+.event time{font-family:var(--mono);font-size:10.5px;color:var(--faint);flex:none;font-variant-numeric:tabular-nums}
+.event i{width:5px;height:5px;border-radius:50%;background:var(--idle);flex:none;transform:translateY(-2px)}
+.event span{color:var(--dim);line-height:1.45;min-width:0}
+.event[data-tone="ok"] i{background:var(--ok)}
+.event[data-tone="bad"] i{background:var(--bad)}
+.event[data-tone="warn"] i{background:var(--warn)}
+.event[data-tone="demo"] i{background:var(--earth-2)}
+.event[data-tone="ok"] span{color:#D6E9BC}
+.event[data-tone="bad"] span{color:#FFD5D0}
+.event[data-tone="warn"] span{color:#F2DAC8}
+
+/* ============================ Device ============================ */
+.kv{display:grid;gap:0;margin:0}
+.kv>div{display:flex;align-items:baseline;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.035);min-width:0}
+.kv>div:last-child{border-bottom:0}
+.kv dt{font-size:11px;color:var(--faint);flex:none}
+.kv dd{font-size:12px;color:var(--dim);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.kv dd.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.rssi{display:inline-flex;align-items:flex-end;gap:2px;margin-right:7px;vertical-align:middle}
+.rssi i{width:3px;border-radius:1px;background:rgba(255,255,255,.14);transition:background .2s}
+.rssi i:nth-child(1){height:5px}
+.rssi i:nth-child(2){height:8px}
+.rssi i:nth-child(3){height:11px}
+.rssi i:nth-child(4){height:14px}
+.rssi i.on{background:var(--ok)}
+.rssi[data-tone="warn"] i.on{background:var(--warn)}
+.rssi[data-tone="bad"] i.on{background:var(--bad)}
+
+/* ============================ Alert bar ============================ */
+.alertbar{
+  display:flex;align-items:center;gap:14px;justify-content:space-between;
+  padding:11px 14px;margin-bottom:14px;border-radius:12px;
+  border:1px solid var(--line-2);background:rgba(255,255,255,.03);
+}
+.alertbar__body{display:flex;align-items:flex-start;gap:10px;min-width:0}
+.alertbar__body svg{width:17px;height:17px;flex:none;margin-top:2px;color:var(--warn)}
+.alertbar b{display:block;font-size:12.5px;font-weight:600}
+.alertbar p{font-size:11.5px;color:var(--dim);margin-top:1px}
+.alertbar[data-tone="bad"]{border-color:rgba(226,104,94,.35);background:rgba(226,104,94,.08)}
+.alertbar[data-tone="bad"] svg{color:var(--bad)}
+.alertbar[data-tone="warn"]{border-color:rgba(217,160,126,.3);background:rgba(217,160,126,.06)}
+.alertbar[data-tone="demo"]{border-color:rgba(140,91,73,.3);background:rgba(140,91,73,.07)}
+.alertbar[data-tone="demo"] svg{color:var(--earth-2)}
+.alertbar[data-tone="info"]{border-color:rgba(4,196,217,.3);background:rgba(4,196,217,.06)}
+.alertbar[data-tone="info"] svg{color:var(--accent)}
+
+/* ============================ Footer ============================ */
+.foot{
+  display:flex;align-items:flex-end;justify-content:space-between;gap:18px;
+  margin-top:20px;padding-top:14px;border-top:1px solid var(--line);
+}
+.foot__brand{background:#fff;border-radius:10px;padding:6px 9px;width:132px;flex:none}
+.foot__brand img{width:100%;height:auto;display:block}
+.foot__meta{display:flex;flex-direction:column;gap:3px;align-items:flex-end;text-align:right;font-size:10.5px;color:var(--faint);letter-spacing:.02em}
+
+/* ============================ Dialog ============================ */
+dialog{
+  border:1px solid var(--line-2);border-radius:18px;padding:0;
+  width:min(540px, calc(100vw - 28px));
+  max-height:calc(100vh - 28px);
+  max-height:calc(100dvh - 28px);
+  background:linear-gradient(180deg,#0A2231,#071A26);color:var(--txt);
+  box-shadow:0 50px 100px -30px rgba(0,0,0,.9);
+}
+dialog[open]{display:flex;flex-direction:column}
+dialog::backdrop{background:rgba(2,10,16,.72);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.modal__head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:18px 20px 12px;border-bottom:1px solid var(--line);flex:0 0 auto}
+.modal__head h2{font-size:15px;font-weight:650;letter-spacing:-.01em}
+.modal__head p{font-size:11.5px;color:var(--faint);margin-top:3px}
+.modal__body{padding:16px 20px;display:flex;flex-direction:column;gap:14px;overflow:auto;min-height:0}
+.modal__foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 20px 16px;border-top:1px solid var(--line);flex:0 0 auto}
+code{font-family:var(--mono);font-size:.92em;color:var(--dim);background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--dim)}
+.field input[type="text"],.field input[type="url"],.field input[type="number"],.field input[type="password"]{
+  width:100%;padding:9px 11px;border-radius:9px;
+  border:1px solid var(--line-2);background:rgba(255,255,255,.035);
+  color:var(--txt);font-family:var(--mono);font-size:12.5px;
+}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field input::placeholder{color:#507586}
+.field .hint{font-size:10.5px}
+.section-label{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-top:2px}
+.switch-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:2px 0}
+.switch-row p{font-size:11px;color:var(--faint);margin-top:2px}
+.switch{appearance:none;width:42px;height:24px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid var(--line-2);position:relative;cursor:pointer;flex:none;transition:background .2s,border-color .2s}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#D7EBF0;transition:transform .2s}
+.switch:checked{background:rgba(140,91,73,.35);border-color:rgba(140,91,73,.5)}
+.switch:checked::after{transform:translateX(18px);background:#F4E9E2}
+.note{font-size:11px;line-height:1.55;color:var(--dim);padding:10px 12px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.025)}
+.note--warn{border-color:rgba(217,160,126,.25);background:rgba(217,160,126,.055);color:#EDD6C6}
+.form-error{font-size:11.5px;color:#FFD5D0}
+.modal--sm{width:min(420px, calc(100vw - 28px))}
+.modal--sm .modal__body h2{font-size:15px;font-weight:650}
+.modal--sm .modal__body p{font-size:12.5px;color:var(--dim);margin-top:6px;line-height:1.55}
+
+/* ============================ Toasts ============================ */
+.toasts{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:80;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;width:max-content;max-width:calc(100vw - 28px)}
+.toast{
+  padding:9px 14px;border-radius:999px;font-size:12px;font-weight:500;
+  background:rgba(7,24,36,.96);border:1px solid var(--line-2);color:var(--txt);
+  box-shadow:0 18px 40px -18px rgba(0,0,0,.9);
+  animation:toastIn .22s ease-out;
+}
+.toast[data-tone="ok"]{border-color:rgba(147,191,80,.4)}
+.toast[data-tone="bad"]{border-color:rgba(226,104,94,.45)}
+.toast[data-tone="warn"]{border-color:rgba(217,160,126,.45)}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ============================ Demo / stale ============================ */
+body.is-demo .c-tank .card__title::after{content:" · simulado";color:var(--earth-2);letter-spacing:.04em}
+body.is-stale .metric,body.is-stale .pump__state,body.is-stale .pump__meta b,body.is-stale .kv-inline .v,body.is-stale .mini-stats b{opacity:.5}
+
+/* ============================ Responsive ============================ */
+@media (max-width:1300px){
+  .tank-pair{max-height:350px}
+}
+@media (max-width:1100px){
+  .grid{grid-template-columns:repeat(6,1fr)}
+  .c-tank{grid-column:1/4;grid-row:1/3}
+  .c-pump{grid-column:4/7;grid-row:1}
+  .c-flow{grid-column:4/7;grid-row:2}
+  .c-level{grid-column:1/4;grid-row:3}
+  .c-alarm{grid-column:4/7;grid-row:3}
+  .c-chart{grid-column:1/7;grid-row:4}
+  .c-controls{grid-column:1/4;grid-row:5}
+  .c-device{grid-column:4/7;grid-row:5}
+  .c-events{grid-column:1/7;grid-row:6}
+  .tank-pair{max-height:420px}
+}
+@media (max-width:820px){
+  .topbar__inner{padding:10px 16px}
+  .page{padding:16px 16px 30px}
+  .clock{display:none}
+  .grid{grid-template-columns:1fr}
+  .c-tank,.c-pump,.c-flow,.c-level,.c-alarm,.c-chart,.c-controls,.c-events,.c-device{grid-column:auto;grid-row:auto}
+  .tank-pair{max-height:430px}
+}
+@media (max-width:640px){
+  body{font-size:14.5px}
+  .grid{grid-template-columns:1fr;gap:12px}
+  .c-tank,.c-pump,.c-flow,.c-level,.c-alarm,.c-chart,.c-controls,.c-events,.c-device{grid-column:auto;grid-row:auto}
+  .brand__sub{display:none}
+  .brand__name{font-size:14px}
+  .status{font-size:11px;padding:5px 10px}
+  .metric{font-size:34px}
+  .tank__level .metric{font-size:38px}
+  .pump__ring{width:72px;height:72px}
+  .pump__ring svg{width:28px;height:28px}
+  .pump__state{font-size:26px}
+  .btn-row{grid-template-columns:1fr}
+  .tank__svg{max-height:none}
+  .tank-stage{min-height:260px}
+  .tank-pair{max-height:350px;min-height:260px}
+  .level-control{width:52px}
+  .mini-stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .field-row{grid-template-columns:1fr}
+  .mini-stats b{font-size:12px}
+  .chart__wrap{min-height:180px}
+  .foot{flex-direction:column;align-items:flex-start;gap:12px}
+  .foot__meta{align-items:flex-start;text-align:left}
+  .alertbar{flex-direction:column;align-items:stretch;gap:10px}
+  .alertbar .btn{align-self:flex-start}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+@media print{
+  .topbar,.toasts,dialog,.alertbar,.c-controls{display:none!important}
+  body{background:#fff;color:#111}
+  .card{border:1px solid #ccc;box-shadow:none;background:#fff}
+}
+</style>
+</head>
+<body data-health="idle">
+<div class="bg-grid" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <div class="brand">
+      <div class="brand__mark" aria-hidden="true">
+        <img src="assets/scall-mark.png" alt="" width="42" height="42">
+      </div>
+      <div class="brand__txt">
+        <div class="brand__name">SCALL</div>
+        <div class="brand__sub">Sistema de captación de agua de lluvia</div>
+      </div>
+    </div>
+    <div class="topbar__right">
+      <div class="clock" aria-hidden="true">
+        <span class="clock__time" id="clockTime">--:--:--</span>
+        <span class="clock__date" id="clockDate">—</span>
+      </div>
+      <span class="status" id="statusPill" data-tone="idle" role="status" aria-live="polite">
+        <i class="dot" aria-hidden="true"></i><span id="statusText">Iniciando…</span>
+      </span>
+      <button class="icon-btn" id="btnSettings" aria-label="Ajustes de conexión y calibración" title="Ajustes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+          <path d="M4 7h9M17 7h3M4 17h4M12 17h8"/>
+          <circle cx="15" cy="7" r="2.1"/><circle cx="10" cy="17" r="2.1"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="page">
+  <div class="alertbar" id="alertBar" hidden data-tone="info" role="status" aria-live="polite">
+    <div class="alertbar__body">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 2.5 17.4A2 2 0 0 0 4.2 20.4h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>
+      </svg>
+      <div>
+        <b id="alertTitle">—</b>
+        <p id="alertText">—</p>
+      </div>
+    </div>
+    <button class="btn btn--xs" id="alertAction" hidden>Abrir</button>
+  </div>
+
+  <main class="grid">
+
+    <!-- ===================== Tanque ===================== -->
+    <section class="card c-tank" aria-labelledby="tankTitle">
+      <div class="card__head">
+        <div>
+          <h2 class="card__title" id="tankTitle">Tanque de reserva</h2>
+          <div class="tank__level">
+            <span class="metric" id="levelPct">—</span>
+            <span class="unit">% de nivel</span>
+          </div>
+        </div>
+        <span class="chip" id="sensorChip" data-tone="idle">Sensor —</span>
+      </div>
+
+      <div class="tank-stage">
+        <div class="tank-pair">
+          <div class="tank-frame" id="tankWrap">
+            <svg class="tank__svg" viewBox="0 0 240 360" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="tankSvgLabel">
+          <title id="tankSvgLabel">Nivel de agua en el tanque</title>
+          <defs>
+            <clipPath id="tankClip"><rect x="34" y="44" width="172" height="282" rx="10"/></clipPath>
+            <linearGradient id="waterGrad" x1="0" y1="44" x2="0" y2="326" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#B6ECF2" stop-opacity=".52"/>
+              <stop offset=".5" stop-color="#04C4D9" stop-opacity=".46"/>
+              <stop offset="1" stop-color="#086B7C" stop-opacity=".78"/>
+            </linearGradient>
+            <linearGradient id="shellGrad" x1="0" y1="40" x2="0" y2="330" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="rgba(255,255,255,.07)"/>
+              <stop offset="1" stop-color="rgba(255,255,255,.015)"/>
+            </linearGradient>
+            <radialGradient id="sensorGlow" cx=".5" cy=".5" r=".5">
+              <stop offset="0" stop-color="#04C4D9" stop-opacity=".5"/>
+              <stop offset="1" stop-color="#04C4D9" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+
+          <circle cx="120" cy="34" r="30" fill="url(#sensorGlow)" opacity=".55"/>
+          <g>
+            <rect x="92" y="6" width="56" height="30" rx="7" fill="#0A2231" stroke="rgba(255,255,255,.18)"/>
+            <circle cx="108" cy="21" r="8.5" fill="#122C3C" stroke="rgba(255,255,255,.13)"/>
+            <circle cx="132" cy="21" r="8.5" fill="#122C3C" stroke="rgba(255,255,255,.13)"/>
+            <circle cx="108" cy="21" r="3.2" fill="rgba(255,255,255,.06)"/>
+            <circle cx="132" cy="21" r="3.2" fill="rgba(255,255,255,.06)"/>
+          </g>
+
+          <line id="beam" x1="120" y1="38" x2="120" y2="326" stroke="rgba(4,196,217,.5)" stroke-width="1" stroke-dasharray="2 7" opacity=".75"/>
+
+          <rect x="26" y="40" width="188" height="290" rx="17" fill="#05141F" stroke="rgba(255,255,255,.1)"/>
+          <rect x="34" y="44" width="172" height="282" rx="10" fill="url(#shellGrad)"/>
+
+          <g clip-path="url(#tankClip)">
+            <g class="water" id="water">
+              <rect x="34" y="44" width="172" height="282" fill="url(#waterGrad)"/>
+              <path class="water__wave" d="M34 44 q14 -6 28 0 t28 0 t28 0 t28 0 t28 0 t28 0 V62 H34 Z" fill="url(#waterGrad)"/>
+              <line x1="34" y1="120" x2="206" y2="120" stroke="rgba(255,255,255,.055)"/>
+              <line x1="34" y1="200" x2="206" y2="200" stroke="rgba(255,255,255,.055)"/>
+              <line x1="34" y1="280" x2="206" y2="280" stroke="rgba(255,255,255,.055)"/>
+            </g>
+            <rect id="deadZone" x="34" y="44" width="172" height="19" fill="rgba(217,160,126,.07)"/>
+            <line id="markOn" x1="34" x2="206" y1="81.6" y2="81.6" stroke="rgba(4,196,217,.85)" stroke-width="1.4" stroke-dasharray="5 4"/>
+            <line id="markOff" x1="34" x2="206" y1="109.8" y2="109.8" stroke="rgba(217,160,126,.55)" stroke-width="1" stroke-dasharray="2 5"/>
+          </g>
+
+          <rect x="26" y="40" width="188" height="290" rx="17" fill="none" stroke="rgba(255,255,255,.13)"/>
+          <rect x="34" y="44" width="172" height="282" rx="10" fill="none" stroke="rgba(255,255,255,.05)"/>
+
+          <g font-family="'JetBrains Mono',ui-monospace,monospace" font-size="9" fill="rgba(255,255,255,.26)">
+            <line x1="26" y1="114.5" x2="34" y2="114.5" stroke="rgba(255,255,255,.18)"/>
+            <line x1="26" y1="185" x2="34" y2="185" stroke="rgba(255,255,255,.18)"/>
+            <line x1="26" y1="255.5" x2="34" y2="255.5" stroke="rgba(255,255,255,.18)"/>
+            <text x="10" y="117">75</text>
+            <text x="10" y="188">50</text>
+            <text x="10" y="259">25</text>
+          </g>
+            </svg>
+          </div>
+          <div class="level-control" id="levelControl">
+            <div class="level-control__title">Nivel</div>
+            <div class="level-rail" id="levelRail" role="slider" aria-orientation="vertical" aria-label="Nivel simulado del tanque" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
+              <div class="level-rail__fill" id="levelRailFill"></div>
+              <i class="level-rail__tick level-rail__tick--off" id="levelTickOff"><b>OFF</b></i>
+              <i class="level-rail__tick level-rail__tick--on" id="levelTickOn"><b>ON</b></i>
+              <div class="level-rail__handle" id="levelHandle"></div>
+            </div>
+            <div class="level-control__hint" id="levelControlHint">Arrastrar</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="legend">
+        <span><i class="lg lg--on" aria-hidden="true"></i>Enciende ≤ <b id="onTh">4,0</b> cm</span>
+        <span><i class="lg lg--off" aria-hidden="true"></i>Apaga ≥ <b id="offTh">4,5</b> cm</span>
+        <span><i class="lg lg--dead" aria-hidden="true"></i>Zona muerta 2 cm</span>
+      </div>
+    </section>
+
+    <!-- ===================== Bomba ===================== -->
+    <section class="card c-pump" aria-labelledby="pumpTitle">
+      <div class="card__head">
+        <h2 class="card__title" id="pumpTitle">Bomba de distribución</h2>
+        <span class="chip" id="pumpChip" data-tone="idle">—</span>
+      </div>
+      <div class="pump">
+        <div class="pump__ring" id="pumpRing" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="2.2"/>
+            <path d="M12 9.8c0-3.3 1.5-6 3.3-6 1.6 0 2.5 1.7 2.5 3.6 0 2.7-2.5 4.6-5.8 4.6Z"/>
+            <path d="M14.2 12c3.3 0 6 1.5 6 3.3 0 1.6-1.7 2.5-3.6 2.5-2.7 0-4.6-2.5-4.6-5.8Z"/>
+            <path d="M9.8 12c-3.3 0-6-1.5-6-3.3 0-1.6 1.7-2.5 3.6-2.5 2.7 0 4.6 2.5 4.6 5.8Z"/>
+          </svg>
+        </div>
+        <div class="pump__main">
+          <div class="pump__state" id="pumpState">—</div>
+          <p class="pump__reason" id="pumpReason">Esperando telemetría</p>
+          <div class="pump__meta">
+            <div><span>Modo</span><b id="pumpMode">—</b></div>
+            <div><span>En marcha</span><b id="pumpRuntime">—</b></div>
+            <div><span>Ciclos · sesión</span><b id="pumpCycles">0</b></div>
+            <div><span>Caudalímetro</span><b id="flowGuard" data-tone="idle" title="Protección de marcha en seco: 0,2 L/min durante 10 s">—</b></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== Caudal ===================== -->
+    <section class="card c-flow" aria-labelledby="flowTitle">
+      <div class="card__head">
+        <h2 class="card__title" id="flowTitle">Caudal</h2>
+        <span class="chip" id="flowChip" data-tone="idle">—</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric" id="flowVal">—</span>
+        <span class="unit">L/min</span>
+      </div>
+      <div class="divider"></div>
+      <div class="kv-inline">
+        <span class="k">Total acumulado</span>
+        <span class="v"><b id="litersVal">—</b> <span class="unit">L</span></span>
+      </div>
+      <p class="hint" id="litersDelta">—</p>
+    </section>
+
+    <!-- ===================== Nivel ===================== -->
+    <section class="card c-level" aria-labelledby="levelTitle">
+      <div class="card__head">
+        <h2 class="card__title" id="levelTitle">Nivel y umbrales</h2>
+        <button class="linkbtn" id="calibLink" type="button">Calibrar</button>
+      </div>
+      <div class="metric-row">
+        <span class="metric metric--sm" id="distVal">—</span>
+        <span class="unit">cm hasta el agua</span>
+      </div>
+      <div class="levelbar" aria-hidden="true">
+        <div class="levelbar__fill" id="levelBarFill"></div>
+        <i class="tick" id="tickOff" style="left:0"></i>
+        <i class="tick tick--on" id="tickOn" style="left:0"></i>
+      </div>
+      <div class="level-legend"><span>0 %</span><span>100 %</span></div>
+      <div class="mini-stats">
+        <div><span>Columna de agua</span><b><span id="waterCol">—</span> cm</b></div>
+        <div><span>Altura útil</span><b><span id="tankHeightVal">—</span> cm</b></div>
+        <div><span>Histéresis</span><b><span id="hystVal">—</span> cm</b></div>
+      </div>
+    </section>
+
+    <!-- ===================== Alarmas ===================== -->
+    <section class="card c-alarm" aria-labelledby="alarmTitle">
+      <div class="card__head">
+        <h2 class="card__title" id="alarmTitle">Alarmas</h2>
+      </div>
+      <div class="alarm" id="alarmState" data-tone="ok">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m4.9 4.9 14.2 14.2"/><path d="M9.5 5.2a8.6 8.6 0 0 1 10 10M6.3 6.3a8.7 8.7 0 0 0 10.9 12.4"/>
+          <path d="M12 3v1.5"/>
+        </svg>
+        <div>
+          <b id="alarmStateText">Sin alarmas</b>
+          <p id="alarmDesc">Operación normal.</p>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <p class="hint">Protección de marcha en seco: caudal mínimo 0,2 L/min durante 10 s.</p>
+    </section>
+
+    <!-- ===================== Historial ===================== -->
+    <section class="card c-chart" aria-labelledby="chartTitle">
+      <div class="card__head">
+        <h2 class="card__title" id="chartTitle">Historial</h2>
+        <div class="seg" id="chartTabs" role="tablist" aria-label="Serie del gráfico">
+          <button type="button" data-series="flow" role="tab" aria-selected="true">Caudal</button>
+          <button type="button" data-series="pct" role="tab" aria-selected="false">Nivel</button>
+          <button type="button" data-series="liters" role="tab" aria-selected="false">Acumulado</button>
+        </div>
+      </div>
+      <div class="chart__stats">
+        <span>Mín <b id="chMin">—</b></span>
+        <span>Máx <b id="chMax">—</b></span>
+        <span>Prom <b id="chAvg">—</b></span>
+        <span class="chart__window">últimos 10 min</span>
+      </div>
+      <div class="chart__wrap">
+        <canvas id="chart" role="img" aria-label="Gráfico histórico"></canvas>
+        <div class="chart__empty" id="chartEmpty">Sin datos todavía</div>
+      </div>
+    </section>
+
+    <!-- ===================== Control ===================== -->
+    <section class="card c-controls" aria-labelledby="controlsTitle">
+      <div class="card__head">
+        <h2 class="card__title" id="controlsTitle">Control de la bomba</h2>
+        <span class="chip" id="modeChip" data-tone="idle">—</span>
+      </div>
+      <div class="segmented" id="modeSeg" role="group" aria-label="Modo de operación">
+        <button type="button" data-mode="AUTO" aria-pressed="false">AUTO</button>
+        <button type="button" data-mode="ON" aria-pressed="false">Encender</button>
+        <button type="button" data-mode="OFF" aria-pressed="false">Apagar</button>
+      </div>
+      <p class="hint" id="modeHint">Selecciona un modo para enviar el comando.</p>
+      <div class="btn-row">
+        <button class="btn" id="btnReset" type="button" disabled>Reiniciar alarma</button>
+        <button class="btn" id="btnResetLiters" type="button" disabled>Reiniciar totalizador</button>
+      </div>
+      <p class="hint" style="margin-top:10px" id="controlHint">Los comandos requieren una conexión activa con el dispositivo.</p>
+      <div class="divider"></div>
+      <div class="fill">
+        <div class="fill__head">
+          <span class="card__title">Llenado manual</span>
+          <span class="chip" id="fillChip" data-tone="idle">Inactivo</span>
+        </div>
+        <button class="btn btn--fill" id="btnFill" type="button" disabled>Llenar tanque</button>
+        <p class="hint" id="fillHint" style="margin-top:8px">Activa el canal 2 del relé (IN2 → GPIO 13). Se detiene a los 3 cm o a los 90 s.</p>
+      </div>
+    </section>
+
+    <!-- ===================== Eventos ===================== -->
+    <section class="card c-events" aria-labelledby="eventsTitle">
+      <div class="card__head">
+        <h2 class="card__title" id="eventsTitle">Registro de eventos</h2>
+        <button class="btn btn--ghost btn--xs" id="clearEvents" type="button">Limpiar</button>
+      </div>
+      <ol class="events" id="events">
+        <li class="events__empty">Sin eventos registrados.</li>
+      </ol>
+    </section>
+
+    <!-- ===================== Dispositivo ===================== -->
+    <section class="card c-device" aria-labelledby="deviceTitle">
+      <div class="card__head">
+        <h2 class="card__title" id="deviceTitle">Dispositivo y enlace</h2>
+        <span class="chip" id="devChip" data-tone="idle">—</span>
+      </div>
+      <dl class="kv">
+        <div><dt>Identificador</dt><dd class="mono" id="devId">—</dd></div>
+        <div><dt>Broker</dt><dd class="mono" id="devBroker" title="">—</dd></div>
+        <div><dt>Tópico base</dt><dd class="mono" id="devTopic" title="">—</dd></div>
+        <div><dt>Señal WiFi</dt><dd class="mono"><span class="rssi" id="devRssiBars" data-tone="idle" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="devRssi">—</span></dd></div>
+        <div><dt>Tiempo activo</dt><dd class="mono" id="devUptime">—</dd></div>
+        <div><dt>Última telemetría</dt><dd class="mono" id="devLast">—</dd></div>
+        <div><dt>Cadencia</dt><dd class="mono" id="devRate">—</dd></div>
+      </dl>
+    </section>
+
+  </main>
+
+  <footer class="foot">
+    <div class="foot__brand">
+      <img src="assets/scall-logo.jpeg" alt="SCALL — Sistema de captación de agua de lluvia">
+    </div>
+    <div class="foot__meta">
+      <span>ESP32-S3-N16R8 · HC-SR04 · YF-S201 · MQTT sobre WebSocket</span>
+      <span>Llenado manual simulado · histéresis 4/4,5 cm</span>
+      <span id="footSecurity">Sin credenciales MQTT · broker público, solo pruebas.</span>
+    </div>
+  </footer>
+</div>
+
+<!-- ===================== Ajustes ===================== -->
+<dialog id="settings" aria-labelledby="settingsTitle">
+  <div class="modal__head">
+    <div>
+      <h2 id="settingsTitle">Ajustes</h2>
+      <p>Conexión con el dispositivo y calibración del tanque.</p>
+    </div>
+    <button class="icon-btn" id="closeSettings" type="button" aria-label="Cerrar ajustes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div class="modal__body">
+    <div class="section-label">Conexión</div>
+    <div class="field">
+      <label for="fBroker">Broker MQTT (WebSocket)</label>
+      <input type="text" id="fBroker" spellcheck="false" autocomplete="off" placeholder="wss://broker.hivemq.com:8884/mqtt">
+      <p class="hint">Debe empezar con <code>wss://</code> si el panel se sirve por HTTPS.</p>
+    </div>
+    <div class="field">
+      <label for="fBase">Tópico base</label>
+      <input type="text" id="fBase" spellcheck="false" autocomplete="off" placeholder="potabilizadora/men-agua-01">
+      <p class="hint">Debe coincidir con <code>TOPIC_BASE</code> del sketch. Se suscribe a <code>/telemetria</code>, <code>/estado</code> y publica en <code>/cmd</code>.</p>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="fUser">Usuario MQTT</label>
+        <input type="text" id="fUser" spellcheck="false" autocomplete="off" placeholder="opcional">
+      </div>
+      <div class="field">
+        <label for="fPass">Clave MQTT</label>
+        <input type="password" id="fPass" autocomplete="new-password" placeholder="opcional">
+      </div>
+    </div>
+    <p class="hint">Dejar ambos vacíos para un broker público. Con un broker privado, las credenciales se guardan solo en este navegador (localStorage).</p>
+
+    <div class="section-label">Calibración</div>
+    <div class="field">
+      <label for="fTank">Altura útil del tanque (cm)</label>
+      <input type="number" id="fTank" min="5" max="500" step="0.5" inputmode="decimal">
+      <p class="hint">Distancia desde la cara del sensor hasta el fondo del tanque. Se usa para convertir la distancia medida en porcentaje de nivel.</p>
+    </div>
+
+    <div class="section-label">Simulación</div>
+    <div class="switch-row">
+      <div>
+        <label for="fDemo" style="text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--txt)">Modo demostración</label>
+        <p>Genera telemetría local con el mismo ciclo de histéresis. No se conecta al broker.</p>
+      </div>
+      <input type="checkbox" id="fDemo" class="switch" role="switch">
+    </div>
+
+    <div class="note note--warn">
+      Con el broker público de prueba, cualquier cliente que conozca el tópico puede leer los datos y enviar comandos. Para un montaje real, configurar un broker privado con TLS y credenciales, y un identificador de dispositivo difícil de adivinar.
+    </div>
+    <p class="form-error" id="settingsError" hidden></p>
+  </div>
+  <div class="modal__foot">
+    <button class="btn" id="resetSettings" type="button">Restaurar</button>
+    <button class="btn" id="cancelSettings" type="button">Cancelar</button>
+    <button class="btn btn--primary" id="saveSettings" type="button">Guardar</button>
+  </div>
+</dialog>
+
+<!-- ===================== Confirmación ===================== -->
+<dialog id="confirmDialog" class="modal--sm" aria-labelledby="confirmTitle">
+  <form method="dialog">
+    <div class="modal__body">
+      <h2 id="confirmTitle">Confirmar</h2>
+      <p id="confirmText"></p>
+    </div>
+    <div class="modal__foot">
+      <button class="btn" value="cancel" type="submit">Cancelar</button>
+      <button class="btn btn--primary" id="confirmAction" value="ok" type="submit">Confirmar</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<noscript>
+  <div class="page"><div class="card">Este panel necesita JavaScript para conectarse al broker MQTT y mostrar la telemetría.</div></div>
+</noscript>
+
+<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  /* =====================================================================
+     Configuración persistente
+     ===================================================================== */
+  const STORE = "scall.dashboard.v1";
+  const LEGACY_STORE = "camotan.dashboard.v1";
+  const DEFAULTS = {
+    broker: "wss://broker.hivemq.com:8884/mqtt",
+    base: "potabilizadora/men-agua-01",
+    user: "",
+    pass: "",
+    tankHeight: 30,
+    demo: false,
+    chartSeries: "flow"
+  };
+  const STALE_MS = 8000;
+  const MAX_HISTORY = 900;          // ~30 min a una muestra cada 2 s
+  const WINDOW_MS = 10 * 60 * 1000; // ventana visible del gráfico
+
+  const $ = (id) => document.getElementById(id);
+  const qsa = (sel, root) => Array.prototype.slice.call((root || document).querySelectorAll(sel));
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+  function loadCfg() {
+    try {
+      const raw = localStorage.getItem(STORE) || localStorage.getItem(LEGACY_STORE);
+      if (!raw) return Object.assign({}, DEFAULTS);
+      const saved = JSON.parse(raw);
+      const cfg = Object.assign({}, DEFAULTS);
+      if (typeof saved.broker === "string" && /^wss?:\/\//i.test(saved.broker)) cfg.broker = saved.broker;
+      if (typeof saved.base === "string" && saved.base.trim()) cfg.base = saved.base.trim().replace(/^\/+|\/+$/g, "");
+      if (typeof saved.user === "string") cfg.user = saved.user;
+      if (typeof saved.pass === "string") cfg.pass = saved.pass;
+      if (Number.isFinite(Number(saved.tankHeight))) cfg.tankHeight = clamp(Number(saved.tankHeight), 5, 500);
+      cfg.demo = Boolean(saved.demo);
+      if (["flow", "pct", "liters"].indexOf(saved.chartSeries) >= 0) cfg.chartSeries = saved.chartSeries;
+      return cfg;
+    } catch (e) {
+      return Object.assign({}, DEFAULTS);
+    }
+  }
+
+  let cfg = loadCfg();
+
+  function persist() {
+    try { localStorage.setItem(STORE, JSON.stringify(cfg)); } catch (e) { /* almacenamiento no disponible */ }
+  }
+
+  /* =====================================================================
+     Estado de la aplicación
+     ===================================================================== */
+  const state = {
+    brokerConnected: false,
+    connecting: false,
+    connectStartedAt: 0,
+    deviceOnline: false,
+    estado: null,
+    lastTelemetryAt: 0,
+    telemetry: null,
+    history: [],
+    events: [],
+    prev: { pump: null, mode: null, alarm: null, sensorOk: null, llenado: null },
+    pumpStartedAt: 0,
+    cycles: 0,
+    baselineLiters: null,
+    stale: false,
+    demoTimer: null,
+    sim: null,
+    lastLog: { text: "", at: 0 },
+    alertSignature: ""
+  };
+
+  let client = null;
+  let alertHandler = null;
+  let chartSeries = cfg.chartSeries;
+
+  /* =====================================================================
+     Utilidades de formato
+     ===================================================================== */
+  const nf = new Map();
+  function fmt(v, digits) {
+    const d = typeof digits === "number" ? digits : 1;
+    const n = Number(v);
+    if (v === null || v === undefined || !Number.isFinite(n)) return "—";
+    if (!nf.has(d)) {
+      nf.set(d, new Intl.NumberFormat("es-AR", {
+        minimumFractionDigits: d,
+        maximumFractionDigits: d
+      }));
+    }
+    return nf.get(d).format(n);
+  }
+
+  function dur(seconds) {
+    let s = Math.max(0, Math.floor(Number(seconds) || 0));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    s = s % 60;
+    if (h) return h + " h " + m + " min";
+    if (m) return m + " min " + s + " s";
+    return s + " s";
+  }
+
+  function ago(ms) {
+    const s = Math.max(0, Math.round(ms / 1000));
+    if (s < 2) return "ahora";
+    if (s < 60) return "hace " + s + " s";
+    const m = Math.floor(s / 60);
+    return "hace " + m + " min";
+  }
+
+  function hexA(hex, alpha) {
+    const n = parseInt(hex.slice(1), 16);
+    return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + alpha + ")";
+  }
+
+  function levelPct(dist) {
+    if (!Number.isFinite(dist)) return null;
+    const pct = ((cfg.tankHeight - dist) / cfg.tankHeight) * 100;
+    return Math.round(clamp(pct, 0, 100) * 10) / 10;
+  }
+
+  function isStale() {
+    return state.lastTelemetryAt > 0 && (Date.now() - state.lastTelemetryAt) > STALE_MS;
+  }
+
+  function commandsEnabled() {
+    if (cfg.demo) return true;
+    return state.brokerConnected && state.deviceOnline && !isStale();
+  }
+
+  const ALARM_LABEL = {
+    NINGUNA: "Sin alarmas",
+    SIN_FLUJO: "Marcha en seco",
+    SENSOR: "Sensor sin lectura"
+  };
+
+  /* =====================================================================
+     Registro de eventos y avisos
+     ===================================================================== */
+  function log(text, tone) {
+    const now = Date.now();
+    if (state.lastLog.text === text && now - state.lastLog.at < 1500) return;
+    state.lastLog = { text: text, at: now };
+    state.events.unshift({ at: now, text: text, tone: tone || "info" });
+    if (state.events.length > 120) state.events.pop();
+    renderEvents();
+  }
+
+  function renderEvents() {
+    const list = $("events");
+    list.textContent = "";
+    if (!state.events.length) {
+      const li = document.createElement("li");
+      li.className = "events__empty";
+      li.textContent = "Sin eventos registrados.";
+      list.appendChild(li);
+      return;
+    }
+    state.events.forEach(function (ev) {
+      const li = document.createElement("li");
+      li.className = "event";
+      li.dataset.tone = ev.tone;
+      const time = document.createElement("time");
+      time.dateTime = new Date(ev.at).toISOString();
+      time.textContent = new Date(ev.at).toLocaleTimeString("es-AR", { hour12: false });
+      const dot = document.createElement("i");
+      const span = document.createElement("span");
+      span.textContent = ev.text;
+      li.appendChild(time);
+      li.appendChild(dot);
+      li.appendChild(span);
+      list.appendChild(li);
+    });
+  }
+
+  function toast(message, tone) {
+    const box = $("toasts");
+    const el = document.createElement("div");
+    el.className = "toast";
+    el.dataset.tone = tone || "info";
+    el.textContent = message;
+    box.appendChild(el);
+    setTimeout(function () { el.remove(); }, 3200);
+  }
+
+  /* =====================================================================
+     Salud de la conexión y barra de alertas
+     ===================================================================== */
+  function healthInfo() {
+    if (cfg.demo) return { tone: "demo", text: "Simulación activa" };
+    if (state.connecting && !state.brokerConnected) return { tone: "warn", text: "Conectando al broker" };
+    if (!state.brokerConnected) return { tone: "bad", text: "Sin conexión al broker" };
+    if (state.estado === "offline") return { tone: "bad", text: "Dispositivo fuera de línea" };
+    if (!state.lastTelemetryAt) return { tone: "warn", text: "Esperando telemetría" };
+    if (isStale()) return { tone: "warn", text: "Telemetría retrasada" };
+    return { tone: "ok", text: "En línea" };
+  }
+
+  function renderHealth() {
+    const info = healthInfo();
+    const pill = $("statusPill");
+    pill.dataset.tone = info.tone;
+    $("statusText").textContent = info.text;
+    document.body.dataset.health = info.tone;
+    document.body.classList.toggle("is-stale", !cfg.demo && isStale());
+    $("devChip").dataset.tone = info.tone;
+    $("devChip").textContent = cfg.demo ? "Simulado" : (state.deviceOnline ? "En línea" : (state.connecting ? "Conectando" : "Fuera de línea"));
+    renderControls();
+    updateFoot();
+  }
+
+  function updateFoot() {
+    $("footSecurity").textContent = cfg.demo
+      ? "Modo demostración · datos generados localmente."
+      : (cfg.user ? "Broker privado · sesión con credenciales." : "Sin credenciales MQTT · broker público, solo pruebas.");
+  }
+
+  function alertInfo() {
+    const t = state.telemetry;
+    if (cfg.demo) {
+      return {
+        tone: "demo",
+        title: "Modo demostración",
+        text: "Los datos se generan localmente con el mismo ciclo de histéresis. Desactívalo en Ajustes para conectar la ESP32.",
+        action: "Desactivar",
+        run: function () {
+          cfg.demo = false;
+          persist();
+          resetConnection();
+          toast("Modo demostración desactivado");
+        }
+      };
+    }
+    if (!state.brokerConnected && state.connecting) {
+      if (Date.now() - state.connectStartedAt > 12000) {
+        return {
+          tone: "bad",
+          title: "No se pudo conectar con el broker",
+          text: "El canal WebSocket sigue sin responder. Revisa la URL, el puerto y las credenciales.",
+          action: "Abrir ajustes",
+          run: function () { openSettings("broker"); }
+        };
+      }
+      return {
+        tone: "info",
+        title: "Conectando con el broker MQTT",
+        text: "Abriendo el canal WebSocket con " + cfg.broker + ".",
+        action: "",
+        run: null
+      };
+    }
+    if (!state.brokerConnected) {
+      return {
+        tone: "bad",
+        title: "Sin conexión con el broker MQTT",
+        text: "No se pudo abrir el canal WebSocket. Revisa la URL del broker y tu red.",
+        action: "Abrir ajustes",
+        run: function () { openSettings("broker"); }
+      };
+    }
+    if (state.estado === "offline") {
+      return {
+        tone: "bad",
+        title: "El dispositivo está fuera de línea",
+        text: "El broker recibió el mensaje de última voluntad de la ESP32. Revisa alimentación y cobertura WiFi.",
+        action: "",
+        run: null
+      };
+    }
+    if (isStale()) {
+      return {
+        tone: "warn",
+        title: "Sin telemetría reciente",
+        text: "El panel dejó de recibir datos. Los valores mostrados corresponden a la última lectura válida.",
+        action: "",
+        run: null
+      };
+    }
+    if (!state.lastTelemetryAt) {
+      return {
+        tone: "info",
+        title: "Esperando al dispositivo",
+        text: "Conectado al broker. Se espera un mensaje en " + cfg.base + "/telemetria.",
+        action: "",
+        run: null
+      };
+    }
+    if (t && t.alarma === "SIN_FLUJO") {
+      return {
+        tone: "bad",
+        title: "Protección de marcha en seco activada",
+        text: "La bomba se detuvo por falta de caudal y quedó bloqueada. Reinicia la alarma para volver a operar.",
+        action: "Reiniciar alarma",
+        run: function () { sendCommand("RESET", "Reiniciar alarma"); }
+      };
+    }
+    if (t && !t.sensor_ok) {
+      return {
+        tone: "warn",
+        title: "Sensor ultrasónico sin lectura",
+        text: "En modo AUTO la bomba queda bloqueada hasta recuperar el nivel. Revisa el cableado y la distancia mínima del HC-SR04.",
+        action: "",
+        run: null
+      };
+    }
+    return null;
+  }
+
+  function renderAlert(force) {
+    const info = alertInfo();
+    const bar = $("alertBar");
+    const signature = info ? info.tone + "|" + info.title + "|" + info.text : "";
+    if (!force && signature === state.alertSignature) return;
+    state.alertSignature = signature;
+
+    if (!info) {
+      bar.hidden = true;
+      alertHandler = null;
+      return;
+    }
+    bar.hidden = false;
+    bar.dataset.tone = info.tone;
+    $("alertTitle").textContent = info.title;
+    $("alertText").textContent = info.text;
+    const btn = $("alertAction");
+    btn.hidden = !info.action;
+    if (info.action) {
+      btn.textContent = info.action;
+      alertHandler = info.run;
+    } else {
+      alertHandler = null;
+    }
+  }
+
+  $("alertAction").addEventListener("click", function () {
+    if (typeof alertHandler === "function") alertHandler();
+  });
+
+  /* =====================================================================
+     Render de telemetría
+     ===================================================================== */
+  function sanitize(raw) {
+    if (!raw || typeof raw !== "object") return null;
+    const num = function (v) { return typeof v === "number" && Number.isFinite(v) ? v : null; };
+    return {
+      id: typeof raw.id === "string" ? raw.id.slice(0, 40) : "—",
+      dist_cm: num(raw.dist_cm),
+      sensor_ok: Boolean(raw.sensor_ok),
+      bomba: Boolean(raw.bomba),
+      modo: ["AUTO", "ON", "OFF"].indexOf(raw.modo) >= 0 ? raw.modo : "AUTO",
+      caudal_lmin: num(raw.caudal_lmin) === null ? 0 : num(raw.caudal_lmin),
+      litros: num(raw.litros) === null ? 0 : num(raw.litros),
+      alarma: ["NINGUNA", "SIN_FLUJO", "SENSOR"].indexOf(raw.alarma) >= 0 ? raw.alarma : "NINGUNA",
+      motivo: typeof raw.motivo === "string" ? raw.motivo.slice(0, 140) : "",
+      umbral_on_cm: num(raw.umbral_on_cm) === null ? 4 : num(raw.umbral_on_cm),
+      umbral_off_cm: num(raw.umbral_off_cm) === null ? 4.5 : num(raw.umbral_off_cm),
+      llenado: Boolean(raw.llenado),
+      llenado_motivo: typeof raw.llenado_motivo === "string" ? raw.llenado_motivo.slice(0, 90) : "",
+      llenado_max_s: num(raw.llenado_max_s) === null ? 90 : num(raw.llenado_max_s),
+      llenado_stop_cm: num(raw.llenado_stop_cm) === null ? 3 : num(raw.llenado_stop_cm),
+      llenado_disponible: raw.llenado_disponible === true,
+      rssi: num(raw.rssi),
+      uptime_s: num(raw.uptime_s)
+    };
+  }
+
+  function renderTelemetry(t) {
+    const has = Boolean(t);
+    const dist = has && t.sensor_ok && Number.isFinite(t.dist_cm) ? t.dist_cm : null;
+    const pct = dist === null ? null : levelPct(dist);
+    const pumpOn = Boolean(has && t.bomba);
+
+    /* --- Tanque --- */
+    $("levelPct").textContent = pct === null ? "—" : fmt(pct, 0);
+    const tankWrap = $("tankWrap");
+    tankWrap.classList.toggle("is-invalid", pct === null);
+
+    const INNER_TOP = 44;
+    const INNER_H = 282;
+    const dy = pct === null ? INNER_H : (1 - pct / 100) * INNER_H;
+    $("water").style.transform = "translateY(" + dy.toFixed(1) + "px)";
+    $("beam").setAttribute("y2", String(INNER_TOP + Math.max(0, dy) - 2));
+
+    const onDist = has ? t.umbral_on_cm : 4;
+    const offDist = has ? t.umbral_off_cm : 4.5;
+    const yOn = INNER_TOP + clamp(onDist / cfg.tankHeight, 0, 1) * INNER_H;
+    const yOff = INNER_TOP + clamp(offDist / cfg.tankHeight, 0, 1) * INNER_H;
+    $("markOn").setAttribute("y1", yOn.toFixed(1));
+    $("markOn").setAttribute("y2", yOn.toFixed(1));
+    $("markOff").setAttribute("y1", yOff.toFixed(1));
+    $("markOff").setAttribute("y2", yOff.toFixed(1));
+    const deadH = clamp(2 / cfg.tankHeight, 0, 1) * INNER_H;
+    $("deadZone").setAttribute("height", deadH.toFixed(1));
+
+    $("onTh").textContent = fmt(onDist, 1);
+    $("offTh").textContent = fmt(offDist, 1);
+
+    const sensorChip = $("sensorChip");
+    if (!has) {
+      sensorChip.dataset.tone = "idle";
+      sensorChip.textContent = "Sensor —";
+    } else if (t.sensor_ok) {
+      sensorChip.dataset.tone = "ok";
+      sensorChip.textContent = "Sensor OK";
+    } else {
+      sensorChip.dataset.tone = "warn";
+      sensorChip.textContent = "Sin lectura";
+    }
+
+    /* --- Bomba --- */
+    $("pumpState").textContent = has ? (pumpOn ? "Encendida" : "Apagada") : "—";
+    $("pumpState").classList.toggle("is-on", pumpOn);
+    $("pumpRing").classList.toggle("is-on", pumpOn);
+    $("pumpReason").textContent = has ? ("Motivo: " + (t.motivo || "sin dato")) : "Esperando telemetría";
+    $("pumpMode").textContent = has ? t.modo : "—";
+    $("pumpCycles").textContent = String(state.cycles);
+
+    const pumpChip = $("pumpChip");
+    pumpChip.dataset.tone = has ? (pumpOn ? "ok" : "idle") : "idle";
+    pumpChip.textContent = has ? (pumpOn ? "Activa" : "Detenida") : "—";
+
+    const guard = $("flowGuard");
+    if (!has) {
+      guard.textContent = "—";
+      guard.dataset.tone = "idle";
+    } else if (!t.bomba) {
+      guard.textContent = "En espera";
+      guard.dataset.tone = "idle";
+    } else if (t.caudal_lmin >= 0.2) {
+      guard.textContent = "OK";
+      guard.dataset.tone = "ok";
+    } else {
+      const onFor = state.pumpStartedAt ? (Date.now() - state.pumpStartedAt) / 1000 : 0;
+      if (onFor < 10) {
+        guard.textContent = "Cebando";
+        guard.dataset.tone = "warn";
+      } else {
+        guard.textContent = "Sin flujo";
+        guard.dataset.tone = "bad";
+      }
+    }
+
+    /* --- Caudal --- */
+    $("flowVal").textContent = has ? fmt(t.caudal_lmin, 2) : "—";
+    $("litersVal").textContent = has ? fmt(t.litros, 3) : "—";
+    const flowChip = $("flowChip");
+    if (!has) {
+      flowChip.dataset.tone = "idle";
+      flowChip.textContent = "—";
+    } else if (t.caudal_lmin >= 0.2) {
+      flowChip.dataset.tone = "ok";
+      flowChip.textContent = "Circulando";
+    } else {
+      flowChip.dataset.tone = "idle";
+      flowChip.textContent = "Sin circulación";
+    }
+    if (has && state.baselineLiters !== null) {
+      const delta = t.litros - state.baselineLiters;
+      $("litersDelta").textContent = (delta >= 0 ? "+" : "") + fmt(delta, 3) + " L desde que abriste el panel";
+    } else {
+      $("litersDelta").textContent = has ? "Referencia tomada al conectar" : "—";
+    }
+
+    /* --- Nivel y umbrales --- */
+    $("distVal").textContent = dist === null ? "—" : fmt(dist, 1);
+    $("waterCol").textContent = dist === null ? "—" : fmt(Math.max(0, cfg.tankHeight - dist), 1);
+    $("tankHeightVal").textContent = fmt(cfg.tankHeight, 1);
+    $("hystVal").textContent = has ? fmt(Math.max(0, offDist - onDist), 1) : "—";
+    $("levelBarFill").style.width = (pct === null ? 0 : pct) + "%";
+    const tickOnPct = has ? clamp(((cfg.tankHeight - onDist) / cfg.tankHeight) * 100, 0, 100) : 0;
+    const tickOffPct = has ? clamp(((cfg.tankHeight - offDist) / cfg.tankHeight) * 100, 0, 100) : 0;
+    $("tickOn").style.left = tickOnPct + "%";
+    $("tickOff").style.left = tickOffPct + "%";
+
+    /* --- Barra lateral de nivel --- */
+    const railPct = pct === null ? 0 : pct;
+    $("levelRailFill").style.height = railPct + "%";
+    $("levelHandle").style.bottom = railPct + "%";
+    $("levelRail").setAttribute("aria-valuenow", String(Math.round(railPct)));
+    $("levelRail").setAttribute("aria-valuetext", pct === null ? "Sin lectura de nivel" : fmt(pct, 0) + " % de nivel");
+    const interactive = cfg.demo;
+    $("levelRail").classList.toggle("is-readonly", !interactive);
+    $("levelRail").setAttribute("aria-disabled", interactive ? "false" : "true");
+    $("levelRail").tabIndex = interactive ? 0 : -1;
+    $("levelRail").setAttribute("aria-label", interactive ? "Nivel simulado del tanque" : "Nivel medido del tanque");
+    $("levelRail").title = interactive ? "Arrastrar para simular el nivel del tanque" : "Nivel medido por el sensor";
+    $("levelControlHint").textContent = interactive ? "Arrastrar" : "Sensor";
+    const onLvl = clamp(((cfg.tankHeight - onDist) / cfg.tankHeight) * 100, 0, 100);
+    const offLvl = clamp(((cfg.tankHeight - offDist) / cfg.tankHeight) * 100, 0, 100);
+    $("levelTickOn").style.bottom = onLvl + "%";
+    $("levelTickOff").style.bottom = offLvl + "%";
+    $("levelTickOn").title = "Enciende a " + fmt(onDist, 1) + " cm";
+    $("levelTickOff").title = "Apaga a " + fmt(offDist, 1) + " cm";
+
+    /* --- Alarmas --- */
+    const alarm = has ? t.alarma : "NINGUNA";
+    const alarmBox = $("alarmState");
+    const alarmIcon = alarmBox.querySelector(".ico");
+    if (!has) {
+      alarmBox.dataset.tone = "idle";
+      $("alarmStateText").textContent = "Sin datos";
+      $("alarmDesc").textContent = "Aún no se recibió telemetría.";
+    } else if (alarm === "SIN_FLUJO") {
+      alarmBox.dataset.tone = "bad";
+      $("alarmStateText").textContent = "Marcha en seco";
+      $("alarmDesc").textContent = "La bomba se apagó por falta de caudal. Requiere reinicio manual.";
+    } else if (alarm === "SENSOR") {
+      alarmBox.dataset.tone = "warn";
+      $("alarmStateText").textContent = "Sensor sin lectura";
+      $("alarmDesc").textContent = "El nivel no es confiable. El control automático está bloqueado.";
+    } else {
+      alarmBox.dataset.tone = "ok";
+      $("alarmStateText").textContent = "Sin alarmas";
+      $("alarmDesc").textContent = "Operación normal.";
+    }
+    alarmIcon.setAttribute("aria-hidden", "true");
+
+    /* --- Modo --- */
+    const modeChip = $("modeChip");
+    modeChip.textContent = has ? t.modo : "—";
+    modeChip.dataset.tone = has ? (t.modo === "AUTO" ? "ok" : "warn") : "idle";
+
+    const hints = {
+      AUTO: "La bomba se activa cuando el agua llega a " + fmt(has ? t.umbral_on_cm : 4, 1) + " cm del sensor y se apaga al bajar de " + fmt(has ? t.umbral_off_cm : 4.5, 1) + " cm.",
+      ON: "Bomba forzada encendida. La protección de marcha en seco sigue activa.",
+      OFF: "Bomba forzada apagada. El nivel se sigue monitoreando."
+    };
+    $("modeHint").textContent = has ? hints[t.modo] : "Selecciona un modo para enviar el comando.";
+
+    /* --- Dispositivo --- */
+    $("devId").textContent = has ? t.id : "—";
+    $("devBroker").textContent = cfg.demo ? "simulación local" : cfg.broker.replace(/^wss?:\/\//i, "");
+    $("devBroker").title = cfg.demo ? "Datos generados en el navegador" : cfg.broker;
+    $("devTopic").textContent = cfg.base;
+    $("devTopic").title = cfg.base;
+    $("devRssi").textContent = has && Number.isFinite(t.rssi) ? t.rssi + " dBm" : "—";
+    setRssi(has ? t.rssi : null);
+    $("devUptime").textContent = has && Number.isFinite(t.uptime_s) ? dur(t.uptime_s) : "—";
+
+    const rate = msgInterval();
+    $("devRate").textContent = rate ? "cada " + fmt(rate, 1) + " s" : "—";
+    $("devLast").textContent = state.lastTelemetryAt ? ago(Date.now() - state.lastTelemetryAt) : "—";
+
+    renderControls();
+  }
+
+  function setRssi(rssi) {
+    const bars = qsa("#devRssiBars i");
+    const wrap = $("devRssiBars");
+    if (!Number.isFinite(rssi)) {
+      bars.forEach(function (b) { b.classList.remove("on"); });
+      wrap.dataset.tone = "idle";
+      return;
+    }
+    const level = rssi >= -60 ? 4 : rssi >= -70 ? 3 : rssi >= -80 ? 2 : 1;
+    wrap.dataset.tone = rssi >= -70 ? "ok" : rssi >= -80 ? "warn" : "bad";
+    bars.forEach(function (b, i) { b.classList.toggle("on", i < level); });
+  }
+
+  function msgInterval() {
+    if (state.history.length < 3) return null;
+    const recent = state.history.slice(-12);
+    const span = (recent[recent.length - 1].at - recent[0].at) / 1000;
+    if (span <= 0) return null;
+    return span / (recent.length - 1);
+  }
+
+  /* =====================================================================
+     Controles
+     ===================================================================== */
+  function renderControls() {
+    const enabled = commandsEnabled();
+    const mode = state.telemetry ? state.telemetry.modo : null;
+    qsa("#modeSeg button").forEach(function (b) {
+      const active = b.dataset.mode === mode;
+      b.classList.toggle("is-active", active);
+      b.setAttribute("aria-pressed", active ? "true" : "false");
+      b.disabled = !enabled;
+    });
+    $("btnResetLiters").disabled = !enabled;
+    $("btnReset").disabled = !enabled || !state.telemetry || state.telemetry.alarma !== "SIN_FLUJO";
+    $("modeChip").textContent = mode || "—";
+    $("controlHint").textContent = enabled
+      ? (cfg.demo ? "Simulación: los comandos se aplican al modelo local." : "Los comandos se publican en " + cfg.base + "/cmd.")
+      : "Los comandos requieren una conexión activa con el dispositivo.";
+
+    /* --- Llenado manual --- */
+    const t = state.telemetry;
+    const filling = Boolean(t && t.llenado);
+    const available = Boolean(t && t.llenado_disponible);
+    const fillBtn = $("btnFill");
+    const fillChip = $("fillChip");
+    let fillEnabled = enabled && available;
+    let chipText = "Inactivo";
+    let chipTone = "idle";
+    let fillHint = cfg.demo
+      ? "Simulación local: el llenado no activa hardware."
+      : "Activa el canal 2 del relé (IN2 → GPIO 13).";
+
+    if (filling) {
+      fillEnabled = enabled;
+      fillBtn.textContent = "Detener llenado";
+      fillBtn.classList.add("is-stop");
+      chipText = "Llenando";
+      chipTone = "active";
+      fillHint = "En curso · se detiene al llegar a " + fmt(t.llenado_stop_cm, 1) + " cm o a los " + t.llenado_max_s + " s.";
+    } else {
+      fillBtn.textContent = "Llenar tanque";
+      fillBtn.classList.remove("is-stop");
+      const finished = t && ["tanque lleno", "tiempo máximo", "detenido por el usuario"].indexOf(t.llenado_motivo) >= 0;
+      if (finished) {
+        chipText = "Finalizado";
+        fillHint = "Llenado: " + t.llenado_motivo + ".";
+      } else if (t && t.llenado_motivo && t.llenado_motivo !== "inactivo") {
+        fillHint = "Llenado: " + t.llenado_motivo + ".";
+      }
+      if (!t) {
+        fillEnabled = false;
+        fillHint = "Sin telemetría. El llenado se habilita al conectar el dispositivo.";
+      } else if (!available) {
+        fillEnabled = false;
+        fillHint = "El llenado físico está deshabilitado. Se puede probar en modo demostración.";
+      } else if (!t.sensor_ok) {
+        fillEnabled = false;
+        fillHint = "Sin lectura de nivel: no se puede detectar el tanque lleno.";
+      } else if (Number.isFinite(t.dist_cm) && t.dist_cm <= t.llenado_stop_cm) {
+        fillEnabled = false;
+        fillHint = "El tanque ya está lleno.";
+      }
+    }
+    fillBtn.disabled = !fillEnabled;
+    fillChip.textContent = chipText;
+    fillChip.dataset.tone = chipTone;
+    $("fillHint").textContent = fillHint;
+  }
+
+  /* =====================================================================
+     Barra de nivel del tanque
+     ===================================================================== */
+  const levelRail = $("levelRail");
+  let draggingLevel = false;
+  let pendingLevel = null;
+  let levelRaf = 0;
+
+  function previewLevel(pct) {
+    const value = clamp(pct, 0, 100);
+    $("levelRailFill").style.height = value + "%";
+    $("levelHandle").style.bottom = value + "%";
+    $("levelRail").setAttribute("aria-valuenow", String(Math.round(value)));
+  }
+
+  function queueSimLevel(pct) {
+    if (!cfg.demo || !state.sim) return;
+    pendingLevel = pct;
+    if (levelRaf) return;
+    levelRaf = requestAnimationFrame(function () {
+      levelRaf = 0;
+      if (pendingLevel === null) return;
+      const value = pendingLevel;
+      pendingLevel = null;
+      applySimLevel(value);
+    });
+  }
+
+  function levelFromPointer(clientY) {
+    const rect = levelRail.getBoundingClientRect();
+    if (!rect.height) return 0;
+    return clamp(((rect.bottom - clientY) / rect.height) * 100, 0, 100);
+  }
+
+  function applySimLevel(pct) {
+    const s = state.sim;
+    if (!s) return;
+    s.manual = true;
+    if (s.fill) {
+      s.fill = false;
+      s.fillMotivo = "ajuste manual";
+    }
+    s.dist = cfg.tankHeight * (1 - clamp(pct, 0, 100) / 100);
+    simStep(true);
+  }
+
+  if (levelRail) {
+    levelRail.addEventListener("pointerdown", function (e) {
+      if (!cfg.demo) return;
+      e.preventDefault();
+      levelRail.focus();
+      draggingLevel = true;
+      levelRail.classList.add("is-dragging");
+      try { levelRail.setPointerCapture(e.pointerId); } catch (err) { /* sin captura */ }
+      const pct = levelFromPointer(e.clientY);
+      previewLevel(pct);
+      queueSimLevel(pct);
+    });
+    levelRail.addEventListener("pointermove", function (e) {
+      if (!draggingLevel) return;
+      const pct = levelFromPointer(e.clientY);
+      previewLevel(pct);
+      queueSimLevel(pct);
+    });
+    function endLevelDrag() {
+      draggingLevel = false;
+      levelRail.classList.remove("is-dragging");
+    }
+    levelRail.addEventListener("pointerup", endLevelDrag);
+    levelRail.addEventListener("pointercancel", endLevelDrag);
+    levelRail.addEventListener("keydown", function (e) {
+      if (!cfg.demo || !state.sim) return;
+      const current = levelPct(state.sim.dist);
+      let next = current === null ? 0 : current;
+      if (e.key === "ArrowUp" || e.key === "ArrowRight") next += 2;
+      else if (e.key === "ArrowDown" || e.key === "ArrowLeft") next -= 2;
+      else if (e.key === "Home") next = 0;
+      else if (e.key === "End") next = 100;
+      else return;
+      e.preventDefault();
+      const pct = clamp(next, 0, 100);
+      previewLevel(pct);
+      queueSimLevel(pct);
+    });
+  }
+
+  qsa("#modeSeg button").forEach(function (b) {
+    b.addEventListener("click", function () { sendCommand(b.dataset.mode, "Modo " + b.dataset.mode); });
+  });
+
+  $("btnReset").addEventListener("click", function () {
+    sendCommand("RESET", "Reiniciar alarma");
+  });
+
+  $("btnResetLiters").addEventListener("click", function () {
+    askConfirm({
+      title: "Reiniciar totalizador",
+      text: "El contador de litros acumulados de la ESP32 volverá a cero. Esta acción no se puede deshacer.",
+      action: "Reiniciar",
+      danger: true
+    }).then(function (ok) {
+      if (ok) sendCommand("RESET_LITROS", "Reiniciar totalizador");
+    });
+  });
+
+  $("btnFill").addEventListener("click", function () {
+    const t = state.telemetry;
+    if (t && t.llenado) {
+      sendCommand("PARAR_LLENADO", "Detener llenado");
+      return;
+    }
+    const stopCm = t && Number.isFinite(t.llenado_stop_cm) ? t.llenado_stop_cm : 3;
+    const maxS = t && t.llenado_max_s ? t.llenado_max_s : 90;
+    const intro = cfg.demo
+      ? "Se simula el llenado del tanque y el modo de distribución pasa a OFF."
+      : "Se activa el actuador de llenado (canal 2 del relé) y el modo de distribución pasa a OFF.";
+    askConfirm({
+      title: "Llenar tanque",
+      text: intro + " Se detiene al llegar a " + fmt(stopCm, 1) + " cm o a los " + maxS + " s.",
+      action: "Llenar"
+    }).then(function (ok) {
+      if (ok) sendCommand("LLENAR", "Llenado manual");
+    });
+  });
+
+  function sendCommand(cmd, label) {
+    if (cfg.demo) {
+      simCommand(cmd);
+      log("Comando aplicado en simulación: " + label, "demo");
+      toast("Simulación · " + label, "warn");
+      return;
+    }
+    if (!state.brokerConnected) {
+      toast("Sin conexión con el broker", "bad");
+      return;
+    }
+    if (!state.deviceOnline) {
+      toast("El dispositivo no está en línea", "bad");
+      return;
+    }
+    try {
+      client.publish(cfg.base + "/cmd", cmd, { qos: 1, retain: false }, function (err) {
+        if (err) {
+          log("Error al publicar " + cmd + ": " + err.message, "bad");
+          toast("No se pudo enviar el comando", "bad");
+        } else {
+          log("Comando enviado: " + label, "info");
+        }
+      });
+      toast("Comando enviado · " + label);
+    } catch (e) {
+      log("Error al publicar " + cmd + ": " + e.message, "bad");
+      toast("No se pudo enviar el comando", "bad");
+    }
+  }
+
+  /* =====================================================================
+     Confirmación
+     ===================================================================== */
+  function askConfirm(opts) {
+    return new Promise(function (resolve) {
+      const dlg = $("confirmDialog");
+      $("confirmTitle").textContent = opts.title;
+      $("confirmText").textContent = opts.text;
+      const btn = $("confirmAction");
+      btn.textContent = opts.action || "Confirmar";
+      btn.className = "btn " + (opts.danger ? "btn--danger" : "btn--primary");
+      const onClose = function () {
+        dlg.removeEventListener("close", onClose);
+        resolve(dlg.returnValue === "ok");
+      };
+      dlg.addEventListener("close", onClose);
+      dlg.showModal();
+    });
+  }
+
+  /* =====================================================================
+     Gráfico
+     ===================================================================== */
+  const chart = { canvas: $("chart"), ctx: null, w: 0, h: 0, dpr: 1 };
+
+  const SERIES = {
+    flow: { label: "Caudal", unit: "L/min", color: "#04C4D9", digits: 2, get: function (p) { return p.flow; }, min0: true, area: true },
+    pct: { label: "Nivel", unit: "%", color: "#B6ECF2", digits: 0, get: function (p) { return p.pct; }, fixed: [0, 100], area: true },
+    liters: { label: "Acumulado", unit: "L", color: "#93BF50", digits: 2, get: function (p) { return p.liters; }, min0: false, area: true }
+  };
+
+  function sizeChart() {
+    const canvas = chart.canvas;
+    const wrap = canvas.parentElement;
+    const rect = wrap.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    chart.w = Math.max(1, Math.round(rect.width));
+    chart.h = Math.max(1, Math.round(rect.height));
+    chart.dpr = dpr;
+    canvas.width = Math.round(chart.w * dpr);
+    canvas.height = Math.round(chart.h * dpr);
+    chart.ctx = canvas.getContext("2d");
+    chart.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawChart();
+  }
+
+  function drawChart() {
+    const ctx = chart.ctx;
+    if (!ctx) return;
+    const w = chart.w;
+    const h = chart.h;
+    const sc = SERIES[chartSeries];
+    ctx.clearRect(0, 0, w, h);
+
+    const now = Date.now();
+    const t0 = now - WINDOW_MS;
+    const points = [];
+    for (let i = 0; i < state.history.length; i++) {
+      const p = state.history[i];
+      const v = sc.get(p);
+      if (p.at >= t0 && Number.isFinite(v)) points.push({ at: p.at, v: v });
+    }
+
+    const empty = $("chartEmpty");
+    const hasData = points.length >= 2;
+    empty.hidden = hasData;
+    if (!hasData) {
+      $("chMin").textContent = "—";
+      $("chMax").textContent = "—";
+      $("chAvg").textContent = "—";
+      chart.canvas.setAttribute("aria-label", sc.label + ": sin datos");
+      return;
+    }
+
+    const padL = 46, padR = 14, padT = 12, padB = 24;
+    const pw = Math.max(10, w - padL - padR);
+    const ph = Math.max(10, h - padT - padB);
+
+    const values = points.map(function (p) { return p.v; });
+    let min, max;
+    if (sc.fixed) {
+      min = sc.fixed[0];
+      max = sc.fixed[1];
+    } else {
+      min = Math.min.apply(null, values);
+      max = Math.max.apply(null, values);
+      if (sc.min0) min = 0;
+      if (max - min < 1e-6) max = min + 1;
+      const padding = (max - min) * 0.16;
+      if (!sc.min0) min = Math.max(0, min - padding);
+      max = max + padding;
+    }
+
+    /* Estadísticas visibles */
+    let sum = 0;
+    for (let i = 0; i < values.length; i++) sum += values[i];
+    const avg = sum / values.length;
+    $("chMin").textContent = fmt(Math.min.apply(null, values), sc.digits) + " " + sc.unit;
+    $("chMax").textContent = fmt(Math.max.apply(null, values), sc.digits) + " " + sc.unit;
+    $("chAvg").textContent = fmt(avg, sc.digits) + " " + sc.unit;
+
+    /* Grilla y etiquetas */
+    ctx.font = "10px 'JetBrains Mono', ui-monospace, monospace";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    for (let i = 0; i <= 4; i++) {
+      const y = padT + (ph * i) / 4;
+      const value = max - ((max - min) * i) / 4;
+      ctx.strokeStyle = "rgba(255,255,255,.055)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(padL + pw, y);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(159,195,206,.7)";
+      ctx.fillText(fmt(value, sc.digits), padL - 8, y);
+    }
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = "rgba(159,195,206,.55)";
+    ["−10 min", "−5 min", "ahora"].forEach(function (label, i) {
+      ctx.fillText(label, padL + (pw * i) / 2, padT + ph + 7);
+    });
+
+    const X = function (t) { return padL + (pw * (t - t0)) / WINDOW_MS; };
+    const Y = function (v) { return padT + ph * (1 - (v - min) / (max - min)); };
+
+    function trace() {
+      ctx.beginPath();
+      for (let i = 0; i < points.length; i++) {
+        const x = X(points[i].at);
+        const y = Y(points[i].v);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+    }
+
+    /* Área */
+    if (sc.area) {
+      trace();
+      ctx.lineTo(X(points[points.length - 1].at), padT + ph);
+      ctx.lineTo(X(points[0].at), padT + ph);
+      ctx.closePath();
+      const grad = ctx.createLinearGradient(0, padT, 0, padT + ph);
+      grad.addColorStop(0, hexA(sc.color, 0.26));
+      grad.addColorStop(1, hexA(sc.color, 0));
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+
+    /* Línea */
+    trace();
+    ctx.strokeStyle = sc.color;
+    ctx.lineWidth = 2;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.stroke();
+
+    /* Último punto */
+    const last = points[points.length - 1];
+    const lx = X(last.at);
+    const ly = Y(last.v);
+    ctx.beginPath();
+    ctx.arc(lx, ly, 7, 0, Math.PI * 2);
+    ctx.fillStyle = hexA(sc.color, 0.18);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(lx, ly, 3.4, 0, Math.PI * 2);
+    ctx.fillStyle = sc.color;
+    ctx.fill();
+
+    chart.canvas.setAttribute("aria-label", sc.label + " de los últimos 10 minutos. Último valor " + fmt(last.v, sc.digits) + " " + sc.unit + ".");
+  }
+
+  qsa("#chartTabs button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      chartSeries = b.dataset.series;
+      cfg.chartSeries = chartSeries;
+      persist();
+      qsa("#chartTabs button").forEach(function (x) {
+        const active = x === b;
+        x.classList.toggle("is-active", active);
+        x.setAttribute("aria-selected", active ? "true" : "false");
+      });
+      drawChart();
+    });
+  });
+
+  /* =====================================================================
+     Aplicación de telemetría
+     ===================================================================== */
+  function applyTelemetry(raw, source) {
+    const t = sanitize(raw);
+    if (!t) return;
+
+    const at = Date.now();
+    const prev = state.prev;
+
+    state.telemetry = t;
+    state.lastTelemetryAt = at;
+    if (source === "mqtt") {
+      state.deviceOnline = true;
+      state.estado = "online";
+    }
+
+    const pct = (t.sensor_ok && Number.isFinite(t.dist_cm)) ? levelPct(t.dist_cm) : null;
+    state.history.push({ at: at, dist: t.dist_cm, pct: pct, flow: t.caudal_lmin, liters: t.litros });
+    if (state.history.length > MAX_HISTORY) state.history.shift();
+    if (state.baselineLiters === null) state.baselineLiters = t.litros;
+
+    /* Transiciones relevantes */
+    if (prev.pump === null) {
+      if (t.bomba) {
+        state.cycles = 1;
+        state.pumpStartedAt = at;
+      }
+    } else if (prev.pump !== t.bomba) {
+      if (t.bomba) {
+        state.cycles += 1;
+        state.pumpStartedAt = at;
+      } else {
+        state.pumpStartedAt = 0;
+      }
+      log(t.bomba ? "Bomba encendida · " + (t.motivo || "sin motivo") : "Bomba apagada · " + (t.motivo || "sin motivo"), t.bomba ? "ok" : "idle");
+    }
+
+    if (prev.alarm !== null && prev.alarm !== t.alarma) {
+      if (t.alarma === "NINGUNA") log("Alarma despejada", "ok");
+      else log("Alarma activa: " + (ALARM_LABEL[t.alarma] || t.alarma), t.alarma === "SIN_FLUJO" ? "bad" : "warn");
+    }
+
+    if (prev.mode !== null && prev.mode !== t.modo) {
+      log("Modo de operación: " + t.modo, "info");
+    }
+
+    if (prev.sensorOk === true && !t.sensor_ok) log("Sensor de nivel sin lectura", "warn");
+    if (prev.sensorOk === false && t.sensor_ok) log("Sensor de nivel recuperado", "ok");
+
+    if (prev.llenado !== null && prev.llenado !== t.llenado) {
+      if (t.llenado) log("Llenado manual iniciado", "ok");
+      else log("Llenado detenido · " + (t.llenado_motivo || "sin motivo"), "info");
+    }
+
+    state.prev = { pump: t.bomba, mode: t.modo, alarm: t.alarma, sensorOk: t.sensor_ok, llenado: t.llenado };
+
+    renderTelemetry(t);
+    renderHealth();
+    renderAlert();
+    drawChart();
+  }
+
+  /* =====================================================================
+     MQTT
+     ===================================================================== */
+  function teardownClient() {
+    if (!client) return;
+    try {
+      if (typeof client.removeAllListeners === "function") client.removeAllListeners();
+      client.end(true);
+    } catch (e) { /* ignorar */ }
+    client = null;
+  }
+
+  function connect() {
+    teardownClient();
+    if (cfg.demo) {
+      startDemo();
+      return;
+    }
+    if (!window.mqtt || typeof window.mqtt.connect !== "function") {
+      state.brokerConnected = false;
+      state.connecting = false;
+      log("No se pudo cargar el cliente MQTT. Revisa la conexión o activa el modo demostración.", "bad");
+      renderHealth();
+      renderAlert(true);
+      return;
+    }
+    state.brokerConnected = false;
+    state.connecting = true;
+    state.connectStartedAt = Date.now();
+    renderHealth();
+    renderAlert(true);
+    log("Conectando a " + cfg.broker, "info");
+
+    try {
+      const options = {
+        clientId: "scall-web-" + Math.random().toString(16).slice(2, 10),
+        clean: true,
+        protocolVersion: 4,
+        reconnectPeriod: 4000,
+        connectTimeout: 8000,
+        keepalive: 30
+      };
+      if (cfg.user) {
+        options.username = cfg.user;
+        options.password = cfg.pass;
+      }
+      client = window.mqtt.connect(cfg.broker, options);
+    } catch (e) {
+      state.brokerConnected = false;
+      state.connecting = false;
+      log("Error al iniciar MQTT: " + e.message, "bad");
+      renderHealth();
+      renderAlert(true);
+      return;
+    }
+
+    client.on("connect", function () {
+      state.brokerConnected = true;
+      state.connecting = false;
+      log("Broker conectado", "ok");
+      const topics = [cfg.base + "/telemetria", cfg.base + "/estado"];
+      client.subscribe(topics, { qos: 0 }, function (err) {
+        if (err) log("No se pudo suscribir: " + err.message, "bad");
+        else log("Suscrito a " + cfg.base + "/+", "info");
+      });
+      renderHealth();
+      renderAlert(true);
+    });
+
+    client.on("reconnect", function () {
+      state.connecting = true;
+      renderHealth();
+      renderAlert(true);
+    });
+
+    client.on("close", function () {
+      const wasConnected = state.brokerConnected;
+      state.brokerConnected = false;
+      state.connecting = true;
+      if (wasConnected) log("Conexión con el broker cerrada. Reintentando…", "bad");
+      renderHealth();
+      renderAlert(true);
+    });
+
+    client.on("error", function (err) {
+      log("MQTT: " + (err && err.message ? err.message : "error desconocido"), "bad");
+    });
+
+    client.on("message", function (topic, payload) {
+      const text = payload ? payload.toString() : "";
+      if (topic === cfg.base + "/estado") {
+        const value = text.trim();
+        state.estado = value;
+        state.deviceOnline = value === "online";
+        log(value === "online" ? "Dispositivo en línea" : "Dispositivo fuera de línea", value === "online" ? "ok" : "bad");
+        renderHealth();
+        renderAlert();
+        return;
+      }
+      if (topic !== cfg.base + "/telemetria") return;
+      let parsed = null;
+      try { parsed = JSON.parse(text); } catch (e) { return; }
+      applyTelemetry(parsed, "mqtt");
+    });
+  }
+
+  function resetConnection() {
+    stopDemo();
+    teardownClient();
+    state.brokerConnected = false;
+    state.connecting = false;
+    state.connectStartedAt = 0;
+    state.deviceOnline = false;
+    state.estado = null;
+    state.lastTelemetryAt = 0;
+    state.telemetry = null;
+    state.history = [];
+    state.prev = { pump: null, mode: null, alarm: null, sensorOk: null, llenado: null };
+    state.pumpStartedAt = 0;
+    state.cycles = 0;
+    state.baselineLiters = null;
+    state.stale = false;
+    state.alertSignature = "";
+    document.body.classList.remove("is-demo", "is-stale");
+    renderTelemetry(null);
+    renderHealth();
+    renderAlert(true);
+    drawChart();
+    connect();
+  }
+
+  /* =====================================================================
+     Simulador local
+     ===================================================================== */
+  function startDemo() {
+    stopDemo();
+    state.brokerConnected = true;
+    state.deviceOnline = true;
+    state.estado = "online";
+    state.lastTelemetryAt = 0;
+    state.sim = { dist: 6.4, pump: false, mode: "AUTO", alarm: "NINGUNA", liters: 0, seconds: 0, fill: false, fillStarted: 0, fillMotivo: "inactivo", manual: false };
+    document.body.classList.add("is-demo");
+    log("Modo demostración: datos simulados localmente", "demo");
+    simStep();
+    state.demoTimer = setInterval(simStep, 2000);
+    renderHealth();
+    renderAlert();
+  }
+
+  function stopDemo() {
+    if (state.demoTimer) {
+      clearInterval(state.demoTimer);
+      state.demoTimer = null;
+    }
+    state.sim = null;
+    document.body.classList.remove("is-demo");
+  }
+
+  function simStep(immediate) {
+    const s = state.sim;
+    if (!s) return;
+
+    if (!immediate) {
+      s.seconds += 2;
+
+      if (s.fill) {
+        /* Llenado manual: el agua sube más rápido que con la lluvia. */
+        s.dist -= 0.3;
+        if (s.dist <= 3.0) {
+          s.dist = 3.0;
+          s.fill = false;
+          s.fillMotivo = "tanque lleno";
+        } else if (s.seconds - s.fillStarted >= 90) {
+          s.fill = false;
+          s.fillMotivo = "tiempo máximo";
+        }
+      } else if (s.manual) {
+        /* Control manual: sin lluvia; solo drena si la bomba está encendida. */
+        if (s.pump) s.dist += 0.34;
+      } else {
+        /* Lluvia: el agua sube y la distancia disminuye. Bomba: el nivel baja. */
+        if (s.pump) s.dist += 0.34;
+        else s.dist -= 0.07;
+      }
+      s.dist = clamp(s.dist, 0, cfg.tankHeight);
+    }
+
+    if (s.fill) {
+      s.pump = false;
+    } else if (s.mode === "AUTO") {
+      if (!s.pump && s.dist <= 4.0) s.pump = true;
+      else if (s.pump && s.dist >= 4.5) s.pump = false;
+    } else if (s.mode === "ON") {
+      s.pump = true;
+    } else {
+      s.pump = false;
+    }
+
+    const flow = s.pump ? 1.25 + Math.random() * 0.25 : 0;
+    if (!immediate) s.liters += (flow * 2) / 60;
+
+    let motivo = "nivel estable";
+    if (s.fill) motivo = "llenado manual en curso";
+    else if (s.mode === "ON") motivo = "manual ON";
+    else if (s.mode === "OFF") motivo = "manual OFF";
+    else if (s.pump) motivo = "agua cerca del sensor";
+    else motivo = "nivel bajo";
+
+    applyTelemetry({
+      id: "demo-scall",
+      dist_cm: Math.round(s.dist * 10) / 10,
+      sensor_ok: true,
+      bomba: s.pump,
+      modo: s.mode,
+      caudal_lmin: Math.round(flow * 100) / 100,
+      litros: Math.round(s.liters * 1000) / 1000,
+      alarma: s.alarm,
+      motivo: motivo,
+      umbral_on_cm: 4,
+      umbral_off_cm: 7,
+      llenado: s.fill,
+      llenado_motivo: s.fill ? "manual" : s.fillMotivo,
+      llenado_max_s: 90,
+      llenado_stop_cm: 3,
+      llenado_disponible: true,
+      rssi: -56 - Math.floor(Math.random() * 8),
+      uptime_s: 3600 + s.seconds
+    }, "demo");
+  }
+
+  function simCommand(cmd) {
+    const s = state.sim;
+    if (!s) return;
+    if (cmd === "AUTO" || cmd === "ON" || cmd === "OFF") s.mode = cmd;
+    else if (cmd === "RESET") s.alarm = "NINGUNA";
+    else if (cmd === "RESET_LITROS") s.liters = 0;
+    else if (cmd === "LLENAR") {
+      if (!s.fill && s.dist > 3.0) {
+        s.fill = true;
+        s.fillStarted = s.seconds;
+        s.fillMotivo = "manual";
+        s.mode = "OFF";
+        s.pump = false;
+      }
+    } else if (cmd === "PARAR_LLENADO") {
+      if (s.fill) {
+        s.fill = false;
+        s.fillMotivo = "detenido por el usuario";
+      }
+    }
+    simStep();
+  }
+
+  /* =====================================================================
+     Ajustes
+     ===================================================================== */
+  function openSettings(focusField) {
+    $("fBroker").value = cfg.broker;
+    $("fBase").value = cfg.base;
+    $("fUser").value = cfg.user;
+    $("fPass").value = cfg.pass;
+    $("fTank").value = cfg.tankHeight;
+    $("fDemo").checked = cfg.demo;
+    $("settingsError").hidden = true;
+    $("settings").showModal();
+    if (focusField === "tank") {
+      setTimeout(function () { $("fTank").focus(); $("fTank").select(); }, 30);
+    } else if (focusField === "broker") {
+      setTimeout(function () { $("fBroker").focus(); $("fBroker").select(); }, 30);
+    }
+  }
+
+  function readSettings() {
+    const broker = $("fBroker").value.trim();
+    const base = $("fBase").value.trim().replace(/^\/+|\/+$/g, "");
+    const tank = Number($("fTank").value);
+    if (!/^wss?:\/\/.+/i.test(broker)) return { error: "El broker debe comenzar con ws:// o wss://." };
+    if (!/^[A-Za-z0-9_-]+(\/[A-Za-z0-9_-]+)*$/.test(base)) return { error: "El tópico base solo admite letras, números, guiones, guiones bajos y barras." };
+    if (!Number.isFinite(tank) || tank < 5 || tank > 500) return { error: "La altura útil debe estar entre 5 y 500 cm." };
+    return {
+      value: {
+        broker: broker,
+        base: base,
+        user: $("fUser").value.trim(),
+        pass: $("fPass").value,
+        tankHeight: Math.round(tank * 10) / 10,
+        demo: $("fDemo").checked,
+        chartSeries: cfg.chartSeries
+      }
+    };
+  }
+
+  $("btnSettings").addEventListener("click", function () { openSettings(); });
+  $("calibLink").addEventListener("click", function () { openSettings("tank"); });
+  $("closeSettings").addEventListener("click", function () { $("settings").close(); });
+  $("cancelSettings").addEventListener("click", function () { $("settings").close(); });
+
+  $("resetSettings").addEventListener("click", function () {
+    $("fBroker").value = DEFAULTS.broker;
+    $("fBase").value = DEFAULTS.base;
+    $("fUser").value = "";
+    $("fPass").value = "";
+    $("fTank").value = DEFAULTS.tankHeight;
+    $("fDemo").checked = false;
+    $("settingsError").hidden = true;
+  });
+
+  $("saveSettings").addEventListener("click", function () {
+    const out = readSettings();
+    if (out.error) {
+      $("settingsError").textContent = out.error;
+      $("settingsError").hidden = false;
+      return;
+    }
+    const next = out.value;
+    const connectionChanged = next.broker !== cfg.broker || next.base !== cfg.base || next.demo !== cfg.demo || next.user !== cfg.user || next.pass !== cfg.pass;
+    const tallChanged = next.tankHeight !== cfg.tankHeight;
+    cfg = next;
+    persist();
+    $("settings").close();
+    updateFoot();
+    log("Configuración actualizada", "info");
+    toast("Configuración guardada", "ok");
+
+    if (connectionChanged) {
+      resetConnection();
+    } else if (tallChanged) {
+      state.history.forEach(function (p) { p.pct = (p.dist !== null && Number.isFinite(p.dist)) ? levelPct(p.dist) : null; });
+      state.alertSignature = "";
+      renderTelemetry(state.telemetry);
+      renderAlert(true);
+      drawChart();
+    }
+  });
+
+  /* =====================================================================
+     Limpieza del registro
+     ===================================================================== */
+  $("clearEvents").addEventListener("click", function () {
+    state.events = [];
+    state.lastLog = { text: "", at: 0 };
+    renderEvents();
+  });
+
+  /* =====================================================================
+     Reloj, caducidad y tiempo en marcha
+     ===================================================================== */
+  function tick() {
+    const now = new Date();
+    $("clockTime").textContent = now.toLocaleTimeString("es-AR", { hour12: false });
+    $("clockDate").textContent = now.toLocaleDateString("es-AR", { weekday: "short", day: "2-digit", month: "short" });
+
+    if (state.lastTelemetryAt) {
+      $("devLast").textContent = ago(Date.now() - state.lastTelemetryAt);
+    }
+
+    if (state.telemetry && state.telemetry.bomba) {
+      $("pumpRuntime").textContent = dur((Date.now() - state.pumpStartedAt) / 1000);
+    } else {
+      $("pumpRuntime").textContent = "—";
+    }
+
+    const staleNow = !cfg.demo && isStale();
+    if (staleNow !== state.stale) {
+      state.stale = staleNow;
+      state.alertSignature = "";
+      renderHealth();
+      renderAlert(true);
+    }
+    if (state.connecting) renderAlert();
+    drawChart();
+  }
+
+  /* =====================================================================
+     Inicio
+     ===================================================================== */
+  function init() {
+    $("fTank").value = cfg.tankHeight;
+    updateFoot();
+    qsa("#chartTabs button").forEach(function (b) {
+      const active = b.dataset.series === chartSeries;
+      b.classList.toggle("is-active", active);
+      b.setAttribute("aria-selected", active ? "true" : "false");
+    });
+    log("Panel SCALL iniciado", "info");
+    renderEvents();
+    renderTelemetry(null);
+    renderHealth();
+    renderAlert();
+    sizeChart();
+    if (typeof ResizeObserver === "function") {
+      new ResizeObserver(sizeChart).observe($("chart").parentElement);
+    } else {
+      window.addEventListener("resize", sizeChart);
+    }
+    tick();
+    setInterval(tick, 1000);
+    connect();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
+
