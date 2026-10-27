@@ -1,0 +1,276 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="1720" viewBox="0 0 2000 1720" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <style>
+      .wire{fill:none;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+      .v5{stroke:#d62828}.gnd{stroke:#1f2328}.trig{stroke:#1e6fd9}.echo{stroke:#2a9d3a}
+      .flow{stroke:#d4a017}.ctl{stroke:#7b3fbf}.pos{stroke:#e8590c}.neg{stroke:#8a8f98}
+      .dot{stroke:none}
+      .pin{fill:#ffffff;stroke:#555;stroke-width:2}
+      .lbl{font-size:17px;font-weight:600;fill:#1f2328}
+      .sub{font-size:14px;fill:#57606a}
+      .ttl{font-size:24px;font-weight:700;fill:#1f2328}
+      .bpin{font-size:15px;fill:#ffffff}
+      .bpinb{font-size:16px;font-weight:700;fill:#ffffff}
+      .pill{font-size:13px;font-weight:700}
+    </style>
+  </defs>
+
+  <!-- Card -->
+  <rect x="0" y="0" width="2000" height="1720" fill="#f6f8fb"/>
+  <rect x="20" y="20" width="1960" height="1680" rx="24" fill="#ffffff" stroke="#d0d7de" stroke-width="2"/>
+
+  <text x="60" y="82" font-size="40" font-weight="800" fill="#1f2328">Esquemático de montaje — Bomba de agua lluvia (Arduino UNO)</text>
+  <text x="60" y="118" font-size="20" fill="#57606a">HC-SR04 (nivel del tanque) · Caudalímetro YF-S201 · Módulo relé 2 canales · Mini motobomba 5 V — pines iguales al sketch bomba_agua_uno.ino</text>
+
+  <!-- ================= Buses (left) ================= -->
+  <!-- 5V bus: from YF Rojo down, along the bottom, up to the UNO 5V pin -->
+  <path class="wire v5" d="M230 250 H120 V1080 H1220 V568 H1175"/>
+  <!-- GND bus: from YF Negro down to the UNO GND pin (digital header) -->
+  <path class="wire gnd" d="M230 320 H160 V748 H885"/>
+  <!-- HC-SR04 GND -->
+  <path class="wire gnd" d="M160 640 H230"/>
+  <!-- HC-SR04 VCC (hops over GND bus) -->
+  <path class="wire v5" d="M120 545 H151 A9 9 0 0 1 169 545 H230"/>
+  <circle class="dot" cx="120" cy="545" r="6" fill="#d62828"/>
+  <circle class="dot" cx="160" cy="640" r="6" fill="#1f2328"/>
+
+  <text transform="translate(106 470) rotate(-90)" font-size="14" font-weight="700" fill="#d62828" text-anchor="middle">BUS 5V</text>
+  <text transform="translate(146 470) rotate(-90)" font-size="14" font-weight="700" fill="#1f2328" text-anchor="middle">BUS GND</text>
+
+  <!-- ================= Signal wires (left) ================= -->
+  <path class="wire flow" d="M560 292 H885"/>
+  <path class="wire trig" d="M560 568 H885"/>
+  <path class="wire echo" d="M560 604 H885"/>
+
+  <rect x="650" y="281" width="150" height="22" rx="11" fill="#fff8e1" stroke="#d4a017" stroke-width="2"/>
+  <text x="725" y="297" class="pill" fill="#9a7400" text-anchor="middle">AMARILLO → D2</text>
+  <rect x="660" y="557" width="120" height="22" rx="11" fill="#eaf2fd" stroke="#1e6fd9" stroke-width="2"/>
+  <text x="720" y="573" class="pill" fill="#1e6fd9" text-anchor="middle">TRIG → D9</text>
+  <rect x="655" y="593" width="130" height="22" rx="11" fill="#eaf7ec" stroke="#2a9d3a" stroke-width="2"/>
+  <text x="720" y="609" class="pill" fill="#2a9d3a" text-anchor="middle">ECHO → D10</text>
+  <rect x="640" y="737" width="130" height="22" rx="11" fill="#ffffff" stroke="#1f2328" stroke-width="2"/>
+  <text x="705" y="753" class="pill" fill="#1f2328" text-anchor="middle">GND del UNO</text>
+  <rect x="470" y="1069" width="120" height="22" rx="11" fill="#ffffff" stroke="#d62828" stroke-width="2"/>
+  <text x="530" y="1085" class="pill" fill="#d62828" text-anchor="middle">5V del UNO</text>
+
+  <!-- ================= YF-S201 ================= -->
+  <rect x="230" y="170" width="330" height="230" rx="14" fill="#fdf6e3" stroke="#c9a227" stroke-width="3"/>
+  <text x="250" y="206" class="ttl">YF-S201</text>
+  <text x="250" y="230" class="sub">caudalímetro (3 cables)</text>
+  <rect x="223" y="243" width="14" height="14" class="pin"/>
+  <text x="245" y="256" class="lbl" fill="#d62828" style="fill:#d62828">Rojo</text>
+  <rect x="223" y="313" width="14" height="14" class="pin"/>
+  <text x="245" y="326" class="lbl">Negro</text>
+  <rect x="553" y="285" width="14" height="14" class="pin"/>
+  <text x="543" y="298" class="lbl" text-anchor="end" style="fill:#9a7400">Amarillo</text>
+  <rect x="310" y="335" width="170" height="50" rx="25" fill="#2b2f36"/>
+  <circle cx="395" cy="360" r="17" fill="#6b7280"/>
+  <path d="M387 360 H403 M397 353 L404 360 L397 367" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- ================= HC-SR04 ================= -->
+  <rect x="230" y="450" width="330" height="250" rx="14" fill="#eaf3fc" stroke="#3b6fb6" stroke-width="3"/>
+  <text x="250" y="486" class="ttl">HC-SR04</text>
+  <text x="250" y="510" class="sub">sensor ultrasónico de nivel</text>
+  <rect x="223" y="538" width="14" height="14" class="pin"/>
+  <text x="245" y="551" class="lbl">VCC</text>
+  <rect x="223" y="633" width="14" height="14" class="pin"/>
+  <text x="245" y="646" class="lbl">GND</text>
+  <rect x="553" y="561" width="14" height="14" class="pin"/>
+  <text x="543" y="574" class="lbl" text-anchor="end">TRIG</text>
+  <rect x="553" y="597" width="14" height="14" class="pin"/>
+  <text x="543" y="610" class="lbl" text-anchor="end">ECHO</text>
+  <circle cx="340" cy="600" r="38" fill="#c9ced6" stroke="#6b7280" stroke-width="4"/>
+  <circle cx="340" cy="600" r="24" fill="#8a8f98"/>
+  <circle cx="440" cy="600" r="38" fill="#c9ced6" stroke="#6b7280" stroke-width="4"/>
+  <circle cx="440" cy="600" r="24" fill="#8a8f98"/>
+  <text x="390" y="686" class="sub" text-anchor="middle">apunta hacia el agua</text>
+
+  <!-- ================= Arduino UNO (rotated: USB at the bottom) ================= -->
+  <rect x="860" y="150" width="340" height="860" rx="20" fill="#0f7c8c" stroke="#095964" stroke-width="3"/>
+  <!-- headers -->
+  <rect x="873" y="204" width="24" height="284" rx="4" fill="#1f2328"/>
+  <rect x="873" y="516" width="24" height="356" rx="4" fill="#1f2328"/>
+  <rect x="1163" y="204" width="24" height="212" rx="4" fill="#1f2328"/>
+  <rect x="1163" y="444" width="24" height="284" rx="4" fill="#1f2328"/>
+  <text x="1030" y="192" font-size="13" fill="#bfe6eb" text-anchor="middle">DIGITAL (izq.)  ·  ANALOG / POWER (der.)</text>
+
+  <!-- left header: D0..D7, D8..D13, GND, AREF, SDA, SCL -->
+  <g fill="#e9c46a">
+    <circle cx="885" cy="220" r="7"/><circle cx="885" cy="256" r="7"/><circle cx="885" cy="328" r="7"/>
+    <circle cx="885" cy="364" r="7"/><circle cx="885" cy="400" r="7"/><circle cx="885" cy="436" r="7"/>
+    <circle cx="885" cy="472" r="7"/><circle cx="885" cy="532" r="7"/><circle cx="885" cy="640" r="7"/>
+    <circle cx="885" cy="676" r="7"/><circle cx="885" cy="712" r="7"/><circle cx="885" cy="784" r="7"/>
+    <circle cx="885" cy="820" r="7"/><circle cx="885" cy="856" r="7"/>
+  </g>
+  <circle cx="885" cy="292" r="9" fill="#d4a017" stroke="#fff" stroke-width="2"/>
+  <circle cx="885" cy="568" r="9" fill="#1e6fd9" stroke="#fff" stroke-width="2"/>
+  <circle cx="885" cy="604" r="9" fill="#2a9d3a" stroke="#fff" stroke-width="2"/>
+  <circle cx="885" cy="748" r="9" fill="#1f2328" stroke="#fff" stroke-width="2"/>
+
+  <g class="bpin">
+    <text x="906" y="225">D0 RX</text><text x="906" y="261">D1 TX</text>
+    <text x="906" y="333">D3</text><text x="906" y="369">D4</text><text x="906" y="405">D5</text>
+    <text x="906" y="441">D6</text><text x="906" y="477">D7</text><text x="906" y="537">D8</text>
+    <text x="906" y="645">D11</text><text x="906" y="681">D12</text><text x="906" y="717">D13</text>
+    <text x="906" y="789">AREF</text><text x="906" y="825">SDA</text><text x="906" y="861">SCL</text>
+  </g>
+  <g class="bpinb">
+    <text x="906" y="297">D2</text><text x="906" y="573">D9</text><text x="906" y="609">D10</text><text x="906" y="753">GND</text>
+  </g>
+  <rect x="948" y="706" width="16" height="11" rx="2" fill="#ffb703"/>
+  <text x="970" y="717" font-size="13" font-weight="700" fill="#ffdd88">L</text>
+
+  <!-- right header: A5..A0, VIN, GND, GND, 5V, 3.3V, RESET, IOREF, NC -->
+  <g fill="#e9c46a">
+    <circle cx="1175" cy="220" r="7"/><circle cx="1175" cy="256" r="7"/><circle cx="1175" cy="292" r="7"/>
+    <circle cx="1175" cy="328" r="7"/><circle cx="1175" cy="364" r="7"/><circle cx="1175" cy="460" r="7"/>
+    <circle cx="1175" cy="496" r="7"/><circle cx="1175" cy="604" r="7"/><circle cx="1175" cy="640" r="7"/>
+    <circle cx="1175" cy="676" r="7"/><circle cx="1175" cy="712" r="7"/>
+  </g>
+  <circle cx="1175" cy="400" r="9" fill="#7b3fbf" stroke="#fff" stroke-width="2"/>
+  <circle cx="1175" cy="532" r="9" fill="#1f2328" stroke="#fff" stroke-width="2"/>
+  <circle cx="1175" cy="568" r="9" fill="#d62828" stroke="#fff" stroke-width="2"/>
+
+  <g class="bpin" text-anchor="end">
+    <text x="1154" y="225">A5</text><text x="1154" y="261">A4</text><text x="1154" y="297">A3</text>
+    <text x="1154" y="333">A2</text><text x="1154" y="369">A1</text><text x="1154" y="465">VIN</text>
+    <text x="1154" y="501">GND</text><text x="1154" y="609">3.3V</text><text x="1154" y="645">RESET</text>
+    <text x="1154" y="681">IOREF</text><text x="1154" y="717">—</text>
+  </g>
+  <g class="bpinb" text-anchor="end">
+    <text x="1154" y="405">A0</text><text x="1154" y="537">GND</text><text x="1154" y="573">5V</text>
+  </g>
+
+  <text x="1030" y="300" font-size="30" font-weight="800" fill="#ffffff" text-anchor="middle">Arduino</text>
+  <text x="1030" y="345" font-size="44" font-weight="800" fill="#ffffff" text-anchor="middle">UNO</text>
+  <rect x="995" y="420" width="70" height="300" rx="6" fill="#1f2328"/>
+  <circle cx="1030" cy="434" r="6" fill="#3a3f46"/>
+  <text transform="translate(1036 570) rotate(-90)" font-size="16" font-weight="700" fill="#c9ced6" text-anchor="middle">ATmega328P</text>
+  <text x="1030" y="790" font-size="13" fill="#bfe6eb" text-anchor="middle">LED L (D13) encendido</text>
+  <text x="1030" y="808" font-size="13" fill="#bfe6eb" text-anchor="middle">= bomba encendida</text>
+
+  <!-- USB + barrel jack -->
+  <rect x="895" y="980" width="90" height="70" rx="6" fill="#c9ced6" stroke="#6b7280" stroke-width="2"/>
+  <text x="940" y="1022" font-size="14" font-weight="700" fill="#1f2328" text-anchor="middle">USB</text>
+  <rect x="1085" y="985" width="80" height="65" rx="6" fill="#2b2f36"/>
+  <text x="1125" y="1023" font-size="12" fill="#c9ced6" text-anchor="middle">jack DC</text>
+  <text x="940" y="1112" class="sub" text-anchor="middle">USB: alimentación y programación</text>
+
+  <!-- ================= Relay side wires ================= -->
+  <path class="wire ctl" d="M1175 400 H1400"/>
+  <path class="wire gnd" d="M1175 532 H1400"/>
+  <path class="wire v5" d="M1175 568 H1400"/>
+  <circle class="dot" cx="1220" cy="568" r="6" fill="#d62828"/>
+  <rect x="1240" y="389" width="120" height="22" rx="11" fill="#f3ecfb" stroke="#7b3fbf" stroke-width="2"/>
+  <text x="1300" y="405" class="pill" fill="#7b3fbf" text-anchor="middle">A0 → IN1</text>
+  <rect x="1250" y="505" width="100" height="20" rx="10" fill="#ffffff" stroke="#1f2328" stroke-width="2"/>
+  <text x="1300" y="520" class="pill" fill="#1f2328" text-anchor="middle">GND</text>
+  <rect x="1260" y="575" width="80" height="20" rx="10" fill="#ffffff" stroke="#d62828" stroke-width="2"/>
+  <text x="1300" y="590" class="pill" fill="#d62828" text-anchor="middle">5V</text>
+
+  <!-- ================= Relay module ================= -->
+  <rect x="1400" y="300" width="240" height="420" rx="14" fill="#fdeeee" stroke="#d9534f" stroke-width="3"/>
+  <text x="1520" y="332" font-size="19" font-weight="700" fill="#a12622" text-anchor="middle">Módulo relé 2 canales</text>
+  <text x="1520" y="354" class="sub" text-anchor="middle">5 V · disparo High/Low</text>
+  <rect x="1393" y="393" width="14" height="14" class="pin"/><text x="1415" y="406" class="lbl">IN1</text>
+  <rect x="1393" y="525" width="14" height="14" class="pin"/><text x="1415" y="538" class="lbl">DC−</text>
+  <rect x="1393" y="561" width="14" height="14" class="pin"/><text x="1415" y="574" class="lbl">DC+</text>
+  <rect x="1393" y="613" width="14" height="14" class="pin" style="stroke:#aaa"/><text x="1415" y="626" class="lbl" style="fill:#9aa1aa">IN2</text>
+  <text x="1415" y="644" font-size="12" font-style="italic" fill="#9aa1aa">IN2, NC1, NO2, COM2, NC2:</text>
+  <text x="1415" y="659" font-size="12" font-style="italic" fill="#9aa1aa">sin conectar</text>
+
+  <rect x="1460" y="430" width="110" height="60" rx="6" fill="#1e5fbf"/>
+  <text x="1515" y="455" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">SRD-05VDC</text>
+  <text x="1515" y="475" font-size="12" fill="#fff" text-anchor="middle">K1 → bomba</text>
+  <rect x="1460" y="560" width="110" height="50" rx="6" fill="#1e5fbf" opacity=".75"/>
+  <text x="1515" y="582" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">SRD-05VDC</text>
+  <text x="1515" y="600" font-size="12" fill="#fff" text-anchor="middle">K2 (libre)</text>
+  <rect x="1418" y="670" width="160" height="40" rx="6" fill="none" stroke="#d62828" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="1498" y="696" font-size="14" font-weight="700" fill="#d62828" text-anchor="middle">Jumper S1 en HIGH</text>
+
+  <rect x="1633" y="413" width="14" height="14" class="pin" style="fill:#4a90d9"/><text x="1625" y="426" class="lbl" text-anchor="end" style="fill:#1e5fbf">NO1</text>
+  <rect x="1633" y="473" width="14" height="14" class="pin" style="fill:#4a90d9"/><text x="1625" y="486" class="lbl" text-anchor="end" style="fill:#1e5fbf">COM1</text>
+  <rect x="1633" y="533" width="14" height="14" class="pin" style="stroke:#aaa"/><text x="1625" y="546" class="lbl" text-anchor="end" style="fill:#9aa1aa">NC1</text>
+
+  <!-- ================= Power side ================= -->
+  <!-- NO1 -> pump + -->
+  <path class="wire pos" d="M1640 420 H1690 V380 H1790"/>
+  <!-- pump - -> supply - -->
+  <path class="wire neg" d="M1790 500 H1680 V890 H1700"/>
+  <!-- supply + -> COM1 -->
+  <path class="wire v5" d="M1700 950 H1660 V480 H1640"/>
+  <!-- flyback diode -->
+  <path class="wire" d="M1745 380 V500" stroke="#555"/>
+  <path d="M1731 455 L1759 455 L1745 428 Z" fill="#1f2328"/>
+  <path d="M1729 426 H1761" stroke="#1f2328" stroke-width="5"/>
+  <circle class="dot" cx="1745" cy="380" r="6" fill="#e8590c"/>
+  <circle class="dot" cx="1745" cy="500" r="6" fill="#8a8f98"/>
+  <text x="1732" y="366" font-size="13" font-weight="700" fill="#e8590c" text-anchor="middle">cable ROJO (+)</text>
+  <rect x="1698" y="520" width="88" height="44" rx="6" fill="#ffffff" stroke="#8a8f98" stroke-width="1.5"/>
+  <text x="1742" y="539" font-size="12" font-weight="700" fill="#1f2328" text-anchor="middle">D1 1N4007</text>
+  <text x="1742" y="556" font-size="11" fill="#57606a" text-anchor="middle">franja → rojo</text>
+  <text x="1692" y="740" font-size="14" font-weight="700" fill="#57606a">cable BLANCO (−)</text>
+  <text x="1652" y="985" font-size="13" font-weight="700" fill="#d62828" text-anchor="end">+5 V → COM1</text>
+
+  <!-- pump -->
+  <rect x="1790" y="320" width="160" height="240" rx="14" fill="#fdf0e8" stroke="#e8590c" stroke-width="3"/>
+  <text x="1870" y="352" font-size="18" font-weight="700" fill="#a63e06" text-anchor="middle">Mini motobomba</text>
+  <text x="1870" y="372" class="sub" text-anchor="middle">5 V DC</text>
+  <rect x="1783" y="373" width="14" height="14" class="pin"/>
+  <rect x="1783" y="493" width="14" height="14" class="pin"/>
+  <circle cx="1880" cy="455" r="46" fill="#fff" stroke="#e8590c" stroke-width="5"/>
+  <text x="1880" y="472" font-size="44" font-weight="800" fill="#e8590c" text-anchor="middle">M</text>
+
+  <!-- supply -->
+  <rect x="1700" y="790" width="250" height="210" rx="14" fill="#f1effc" stroke="#6c4fd1" stroke-width="3"/>
+  <text x="1825" y="826" font-size="20" font-weight="700" fill="#3b2a8a" text-anchor="middle">Fuente 5 V DC</text>
+  <text x="1825" y="848" class="sub" text-anchor="middle">cargador USB 5 V · 1 A o más</text>
+  <rect x="1693" y="883" width="14" height="14" class="pin"/><text x="1716" y="896" class="lbl">− GND</text>
+  <rect x="1693" y="943" width="14" height="14" class="pin"/><text x="1716" y="956" class="lbl" style="fill:#d62828">+ 5 V</text>
+  <text x="1825" y="985" font-size="12" fill="#57606a" text-anchor="middle">(su GND NO va al UNO)</text>
+
+  <!-- ================= Connection table ================= -->
+  <rect x="60" y="1150" width="900" height="520" rx="16" fill="#ffffff" stroke="#d0d7de" stroke-width="2"/>
+  <text x="85" y="1192" font-size="24" font-weight="700" fill="#1f2328">Tabla de conexiones</text>
+  <line x1="85" y1="1206" x2="935" y2="1206" stroke="#d0d7de" stroke-width="2"/>
+  <g font-size="17" fill="#1f2328">
+    <text x="85" y="1238" font-weight="700" fill="#1e5fbf">HC-SR04</text>
+    <rect x="245" y="1226" width="12" height="12" fill="#d62828"/><text x="265" y="1238" font-weight="600">VCC</text><text x="430" y="1238">5V (bus +)</text>
+    <rect x="245" y="1256" width="12" height="12" fill="#1f2328"/><text x="265" y="1268" font-weight="600">GND</text><text x="430" y="1268">GND (bus −)</text>
+    <rect x="245" y="1286" width="12" height="12" fill="#1e6fd9"/><text x="265" y="1298" font-weight="600">TRIG</text><text x="430" y="1298">D9</text>
+    <rect x="245" y="1316" width="12" height="12" fill="#2a9d3a"/><text x="265" y="1328" font-weight="600">ECHO</text><text x="430" y="1328">D10 (directo, sin resistencias)</text>
+    <line x1="85" y1="1342" x2="935" y2="1342" stroke="#eaeef2"/>
+    <text x="85" y="1368" font-weight="700" fill="#1e5fbf">YF-S201</text>
+    <rect x="245" y="1356" width="12" height="12" fill="#d62828"/><text x="265" y="1368" font-weight="600">Rojo</text><text x="430" y="1368">5V (bus +)</text>
+    <rect x="245" y="1386" width="12" height="12" fill="#1f2328"/><text x="265" y="1398" font-weight="600">Negro</text><text x="430" y="1398">GND (bus −)</text>
+    <rect x="245" y="1416" width="12" height="12" fill="#d4a017"/><text x="265" y="1428" font-weight="600">Amarillo</text><text x="430" y="1428">D2 (directo, sin resistencias)</text>
+    <line x1="85" y1="1442" x2="935" y2="1442" stroke="#eaeef2"/>
+    <text x="85" y="1468" font-weight="700" fill="#1e5fbf">Relé 2 can.</text>
+    <rect x="245" y="1456" width="12" height="12" fill="#d62828"/><text x="265" y="1468" font-weight="600">DC+ / DC−</text><text x="430" y="1468">5V / GND del UNO</text>
+    <rect x="245" y="1486" width="12" height="12" fill="#7b3fbf"/><text x="265" y="1498" font-weight="600">IN1</text><text x="430" y="1498">A0 (IN2 sin conectar)</text>
+    <rect x="245" y="1516" width="12" height="12" fill="#d62828"/><text x="265" y="1528" font-weight="600">COM1</text><text x="430" y="1528">+5 V de la fuente externa</text>
+    <rect x="245" y="1546" width="12" height="12" fill="#e8590c"/><text x="265" y="1558" font-weight="600">NO1</text><text x="430" y="1558">cable rojo (+) de la bomba</text>
+    <line x1="85" y1="1572" x2="935" y2="1572" stroke="#eaeef2"/>
+    <text x="85" y="1598" font-weight="700" fill="#1e5fbf">Bomba</text>
+    <rect x="245" y="1586" width="12" height="12" fill="#8a8f98"/><text x="265" y="1598" font-weight="600">Blanco (−)</text><text x="430" y="1598">− / GND de la fuente externa</text>
+    <rect x="245" y="1616" width="12" height="12" fill="#555"/><text x="265" y="1628" font-weight="600">Diodo 1N4007</text><text x="430" y="1628">en paralelo, franja (cátodo) hacia el rojo</text>
+  </g>
+
+  <!-- ================= Notes ================= -->
+  <rect x="1000" y="1150" width="940" height="520" rx="16" fill="#fffbea" stroke="#d4b94a" stroke-width="2"/>
+  <text x="1025" y="1192" font-size="24" font-weight="700" fill="#6b5600">Antes de energizar</text>
+  <g font-size="17" fill="#3d3a2a">
+    <text x="1025" y="1238">1. El UNO trabaja a 5 V, igual que los sensores: se eliminan los</text>
+    <text x="1046" y="1262">divisores R1–R4 del esquemático de la ESP32. Cables directos.</text>
+    <text x="1025" y="1304">2. La bomba usa su propia fuente de 5 V a través del relé (COM1/NO1),</text>
+    <text x="1046" y="1328">así sus picos de corriente no reinician el UNO. Ese GND no va al UNO.</text>
+    <text x="1025" y="1370">3. Jumper S1 del relé en HIGH: digitalWrite(A0, HIGH) = bomba encendida.</text>
+    <text x="1046" y="1394">En LOW, cambiar RELE_ACTIVO_ALTO a false en el sketch.</text>
+    <text x="1025" y="1436">4. El UNO se alimenta por USB; su pin 5V alimenta HC-SR04, YF-S201</text>
+    <text x="1046" y="1460">y la bobina del relé (unos 150 mA en total).</text>
+    <text x="1025" y="1502">5. Opcional: resistencia de 10 kΩ de IN1 a GND para que el relé no se</text>
+    <text x="1046" y="1526">active durante el segundo que tarda el UNO en arrancar.</text>
+    <text x="1025" y="1568">6. La bomba arranca apagada y enciende con agua a menos de 4 cm del</text>
+    <text x="1046" y="1592">sensor. Monitor Serie a 9600 baudios para ver distancia y estado.</text>
+  </g>
+</svg>

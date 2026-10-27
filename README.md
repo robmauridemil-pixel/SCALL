@@ -11,6 +11,50 @@ monitorear y comandar a distancia.
 
 ---
 
+## 0. Versión Arduino UNO (sin WiFi)
+
+Sketch: [`arduino_uno/bomba_agua_uno/bomba_agua_uno.ino`](arduino_uno/bomba_agua_uno/bomba_agua_uno.ino).
+Diagrama: [`arduino_uno/esquematico_arduino_uno.png`](arduino_uno/esquematico_arduino_uno.png).
+Hace el mismo control por nivel que la ESP32, pero sin panel web ni MQTT:
+
+- La bomba arranca **apagada**.
+- Si hay algo o agua a **menos de 4 cm** del HC-SR04, la bomba enciende para vaciar el tanque.
+- Si no hay nada a esa distancia (≥ 4,5 cm), la bomba se apaga. Los 0,5 cm solo
+  absorben el ruido del sensor. Para vaciar más, subir `DIST_APAGAR_CM`.
+- El LED integrado (pin 13) se enciende junto con la bomba.
+- El YF-S201 solo informa caudal y litros en el Monitor Serie (9600 baudios).
+
+El UNO trabaja a 5 V, igual que los sensores, así que **se eliminan los divisores
+R1–R4** del esquemático de la ESP32: los cables van directos. El relé se mantiene,
+porque un pin del UNO entrega ~20 mA y la bomba necesita cientos.
+
+| Componente | Cable | Arduino UNO |
+| --- | --- | --- |
+| HC-SR04 | VCC | 5V |
+| HC-SR04 | GND | GND |
+| HC-SR04 | TRIG | D9 |
+| HC-SR04 | ECHO | D10 (directo, sin resistencias) |
+| YF-S201 | Rojo | 5V |
+| YF-S201 | Negro | GND |
+| YF-S201 | Amarillo | D2 (directo, sin resistencias) |
+| Relé 2 canales | DC+ | 5V |
+| Relé 2 canales | DC- | GND |
+| Relé 2 canales | IN1 | A0, usado como salida digital (jumper S1 en HIGH) |
+| Relé 2 canales | IN2 | sin conectar |
+
+El circuito de potencia no cambia: COM1 → +5 V de la fuente externa, NO1 → cable
+rojo de la bomba, cable blanco de la bomba → − de la fuente externa, y el diodo
+1N4007 en paralelo con la bomba con la franja hacia el cable rojo. El GND de la
+fuente externa no se une al UNO.
+
+Opcional: una resistencia de 10 kΩ de IN1 a GND evita que el relé se active
+durante el segundo que tarda el UNO en arrancar.
+
+Para cargarlo: Arduino IDE → **Archivo → Abrir** el `.ino` → **Herramientas → Placa →
+Arduino Uno** → elegir el puerto COM → **Subir**. No necesita librerías externas.
+
+---
+
 ## 1. Arquitectura
 
 ```
@@ -73,7 +117,12 @@ conexión: `IN2` → GPIO 13 y el canal 2 del relé para el actuador de llenado.
 
 ```
 SCALL/
-├── bomba_agua_esp32s3_2.ino              Firmware de la ESP32-S3
+├── bomba_agua_esp32s3_2/
+│   └── bomba_agua_esp32s3_2.ino          Firmware de la ESP32-S3
+├── arduino_uno/
+│   ├── bomba_agua_uno/bomba_agua_uno.ino Firmware para Arduino UNO (sin WiFi)
+│   ├── esquematico_arduino_uno.png       Diagrama de conexiones del UNO
+│   └── esquematico_arduino_uno.svg       Diagrama editable
 ├── index.html                            Panel web (un solo archivo, sin build)
 ├── assets/
 │   ├── scall-mark.png                    Emblema para el encabezado y el favicon
@@ -132,7 +181,7 @@ superior.
    | Upload Speed | 921600 o la que funcione mejor |
    | Monitor Serie | 115200 baudios |
 
-5. Abrir `bomba_agua_esp32s3_2.ino` y completar:
+5. Abrir `bomba_agua_esp32s3_2/bomba_agua_esp32s3_2.ino` y completar:
 
    ```cpp
    const char* WIFI_SSID = "TU_RED_WIFI";   // solo 2,4 GHz
