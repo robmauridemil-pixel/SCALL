@@ -223,6 +223,9 @@ svg{display:block}
   font-family:var(--mono);font-size:7.5px;font-weight:500;letter-spacing:.02em;color:var(--faint);
   background:var(--bg-soft);padding:0 2px;border-radius:3px;white-space:nowrap;
 }
+/* ON/OFF sit only 0.5 cm apart: put ON above its line and OFF below it */
+.level-rail__tick--on b{transform:translateY(-100%)}
+.level-rail__tick--off b{transform:translateY(0)}
 .legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:11px;color:var(--dim)}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .legend b{font-family:var(--mono);font-weight:500;color:var(--txt);font-variant-numeric:tabular-nums}
@@ -975,7 +978,7 @@ body.is-stale .metric,body.is-stale .pump__state,body.is-stale .pump__meta b,bod
     user: "",
     pass: "",
     tankHeight: 30,
-    demo: false,
+    demo: true,                     // the Arduino UNO build has no WiFi: open in simulation
     chartSeries: "flow"
   };
   const STALE_MS = 8000;
@@ -2226,7 +2229,7 @@ body.is-stale .metric,body.is-stale .pump__state,body.is-stale .pump__meta b,bod
       alarma: s.alarm,
       motivo: motivo,
       umbral_on_cm: 4,
-      umbral_off_cm: 7,
+      umbral_off_cm: 4.5,
       llenado: s.fill,
       llenado_motivo: s.fill ? "manual" : s.fillMotivo,
       llenado_max_s: 90,
